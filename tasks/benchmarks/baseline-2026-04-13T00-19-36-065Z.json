@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-04-13T00-19-36-065Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 388.938,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 395.829,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 352.505,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 310.959,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 331.379,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 355.922,
+      "medianMs": 352.505,
+      "minMs": 310.959,
+      "maxMs": 395.829
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 1302.104,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1090.613,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1079.734,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1082.634,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1091.401,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 1129.297,
+      "medianMs": 1090.613,
+      "minMs": 1079.734,
+      "maxMs": 1302.104
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 47.639
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.545
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 34.039
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.373
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 52.424
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 166.513
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 1.903
+    },
+    {
+      "label": "system_prompt_warm_forced_prefetch",
+      "iterations": 50,
+      "ms": 19.947
+    },
+    {
+      "label": "custom_agent_context_current",
+      "iterations": 100,
+      "ms": 1.785
+    },
+    {
+      "label": "custom_agent_context_legacy",
+      "iterations": 100,
+      "ms": 15.803
+    },
+    {
+      "label": "compact_custom_prompt_current",
+      "iterations": 100,
+      "ms": 0.879
+    },
+    {
+      "label": "compact_custom_prompt_legacy",
+      "iterations": 100,
+      "ms": 13.271
+    },
+    {
+      "label": "auxiliary_claudemd_summary",
+      "iterations": 500,
+      "ms": 36.699
+    }
+  ],
+  "sizeBenchmarks": [
+    {
+      "label": "agent creation CLAUDE.md payload (synthetic large fixture)",
+      "beforeChars": 5580,
+      "afterChars": 1066
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

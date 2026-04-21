@@ -1,0 +1,141 @@
+{
+  "generatedAt": "2026-04-11T11-45-36-236Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 0.933,
+          "ok": false
+        },
+        {
+          "ms": 0.407,
+          "ok": false
+        },
+        {
+          "ms": 0.301,
+          "ok": false
+        },
+        {
+          "ms": 0.28,
+          "ok": false
+        },
+        {
+          "ms": 0.258,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.436,
+      "medianMs": 0.301,
+      "minMs": 0.258,
+      "maxMs": 0.933
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 0.415,
+          "ok": false
+        },
+        {
+          "ms": 0.312,
+          "ok": false
+        },
+        {
+          "ms": 0.273,
+          "ok": false
+        },
+        {
+          "ms": 0.331,
+          "ok": false
+        },
+        {
+          "ms": 0.335,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.333,
+      "medianMs": 0.331,
+      "minMs": 0.273,
+      "maxMs": 0.415
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 54.95
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.95
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 50.919
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.63
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 68.373
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 201.848
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 3.122
+    },
+    {
+      "label": "system_prompt_warm_forced_prefetch",
+      "iterations": 50,
+      "ms": 12.031
+    },
+    {
+      "label": "custom_agent_context_current",
+      "iterations": 100,
+      "ms": 8.654
+    },
+    {
+      "label": "custom_agent_context_legacy",
+      "iterations": 100,
+      "ms": 2.135
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

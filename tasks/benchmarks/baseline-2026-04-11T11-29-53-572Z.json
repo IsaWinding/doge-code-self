@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-04-11T11-29-53-572Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 355.876,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 310.648,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 295.549,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 295.259,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 285.551,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 308.577,
+      "medianMs": 295.549,
+      "minMs": 285.551,
+      "maxMs": 355.876
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 1114.536,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1155.42,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1128.089,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1091.355,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1129.07,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 1123.694,
+      "medianMs": 1128.089,
+      "minMs": 1091.355,
+      "maxMs": 1155.42
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 51.436
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.942
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 37.792
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.426
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 53.832
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 167.345
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 2.066
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

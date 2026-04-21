@@ -1,0 +1,213 @@
+{
+  "generatedAt": "2026-04-15T14-16-25-636Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 1.043,
+          "ok": false
+        },
+        {
+          "ms": 0.378,
+          "ok": false
+        },
+        {
+          "ms": 0.298,
+          "ok": false
+        },
+        {
+          "ms": 0.334,
+          "ok": false
+        },
+        {
+          "ms": 0.295,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.47,
+      "medianMs": 0.334,
+      "minMs": 0.295,
+      "maxMs": 1.043
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 0.589,
+          "ok": false
+        },
+        {
+          "ms": 0.328,
+          "ok": false
+        },
+        {
+          "ms": 0.287,
+          "ok": false
+        },
+        {
+          "ms": 0.312,
+          "ok": false
+        },
+        {
+          "ms": 0.303,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.364,
+      "medianMs": 0.312,
+      "minMs": 0.287,
+      "maxMs": 0.589
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 50.848
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.78
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 37.906
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.366
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 57.938
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 191.441
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 3.201
+    },
+    {
+      "label": "system_prompt_warm_forced_prefetch",
+      "iterations": 50,
+      "ms": 15.968
+    },
+    {
+      "label": "custom_agent_context_current",
+      "iterations": 100,
+      "ms": 2.651
+    },
+    {
+      "label": "custom_agent_context_legacy",
+      "iterations": 100,
+      "ms": 21.35
+    },
+    {
+      "label": "compact_custom_prompt_current",
+      "iterations": 100,
+      "ms": 1.031
+    },
+    {
+      "label": "compact_custom_prompt_legacy",
+      "iterations": 100,
+      "ms": 17.772
+    },
+    {
+      "label": "auxiliary_claudemd_summary",
+      "iterations": 500,
+      "ms": 38.2
+    },
+    {
+      "label": "auxiliary_git_status_summary",
+      "iterations": 500,
+      "ms": 4.315
+    },
+    {
+      "label": "manual_session_memory_prep_current",
+      "iterations": 100,
+      "ms": 0.7
+    },
+    {
+      "label": "manual_session_memory_prep_legacy",
+      "iterations": 100,
+      "ms": 27.3
+    },
+    {
+      "label": "side_question_fallback_prep_current",
+      "iterations": 100,
+      "ms": 0.691
+    },
+    {
+      "label": "side_question_fallback_prep_legacy",
+      "iterations": 100,
+      "ms": 15.087
+    },
+    {
+      "label": "agent_summary_local_derivation",
+      "iterations": 5000,
+      "ms": 2.987
+    }
+  ],
+  "sizeBenchmarks": [
+    {
+      "label": "agent creation CLAUDE.md payload (synthetic large fixture)",
+      "beforeChars": 5580,
+      "afterChars": 1066
+    },
+    {
+      "label": "session memory git payload (synthetic large fixture)",
+      "beforeChars": 1269,
+      "afterChars": 598
+    },
+    {
+      "label": "manual session-memory system prompt",
+      "beforeChars": 25141,
+      "afterChars": 536
+    },
+    {
+      "label": "side-question fallback context bundle (synthetic large fixture)",
+      "beforeChars": 31990,
+      "afterChars": 1960
+    },
+    {
+      "label": "agent summary context window (synthetic transcript)",
+      "beforeChars": 1711,
+      "afterChars": 1275
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

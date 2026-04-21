@@ -1,0 +1,17 @@
+## Codebase Patterns
+- Doge Code is a Bun-first TypeScript CLI project with the main entrypoint at `src/bootstrap-entry.ts`.
+- Root-level validation is command-driven: prefer `bun run version` for a boot smoke test and targeted manual checks for the specific command or flow you change.
+- This restored source tree values minimal, auditable changes over broad refactors.
+- `process.versions.bun` gives the Bun version synchronously; `process.version` gives Node version.
+- Doctor screen uses React compiler (`_c(n)` cache sentinel pattern) — small JSX inserts work fine but avoid restructuring the cache indices.
+
+---
+
+## [2026-04-06 00:00] - [US-002]
+- Implemented: Collect runtime and filesystem diagnostics (Bun version, Node version, Doge config directory existence, main config file existence) with pass/warn/fail status for the doctor command.
+- Changed files: `src/utils/doctorChecks.ts`, `src/screens/Doctor.tsx`
+- **Future iteration learnings:**
+  - The Doctor screen is a pre-compiled JSX component with React compiler cache (`_c(n)`) — keep edits minimal and avoid renumbering cache indices
+  - Config paths follow the Doge convention: `~/.doge/` via `getClaudeConfigHomeDir()` (despite the function name)
+  - Use `process.versions.bun` and `process.version` for runtime detection — both are synchronous and free
+  - `bun run version` is the fastest smoke test for any CLI change in this project

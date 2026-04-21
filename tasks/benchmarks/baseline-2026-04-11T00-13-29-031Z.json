@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-04-11T00-13-29-031Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 1.188,
+          "ok": false
+        },
+        {
+          "ms": 0.431,
+          "ok": false
+        },
+        {
+          "ms": 0.374,
+          "ok": false
+        },
+        {
+          "ms": 0.373,
+          "ok": false
+        },
+        {
+          "ms": 0.311,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.535,
+      "medianMs": 0.374,
+      "minMs": 0.311,
+      "maxMs": 1.188
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 0.357,
+          "ok": false
+        },
+        {
+          "ms": 0.291,
+          "ok": false
+        },
+        {
+          "ms": 0.269,
+          "ok": false
+        },
+        {
+          "ms": 0.257,
+          "ok": false
+        },
+        {
+          "ms": 0.244,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.284,
+      "medianMs": 0.269,
+      "minMs": 0.244,
+      "maxMs": 0.357
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 48.408
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.485
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 29.649
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.275
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 36.983
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 160.193
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

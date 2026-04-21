@@ -1,0 +1,74 @@
+{
+  "project": "Doge Code Doctor Command",
+  "branchName": "ralph/doge-doctor-command",
+  "description": "Add a multi-step doctor command feature for Doge Code that diagnoses local runtime and configuration health.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Register the doctor command and shared report type",
+      "description": "As a contributor, I want a real doge doctor entrypoint so diagnostics can be invoked consistently from the CLI.",
+      "acceptanceCriteria": [
+        "A doctor command is registered in the CLI command system.",
+        "Running doge doctor reaches a dedicated handler module.",
+        "A shared report type is defined for doctor results.",
+        "bun run version succeeds."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "",
+      "retryCount": 0,
+      "blocked": false
+    },
+    {
+      "id": "US-002",
+      "title": "Collect runtime and filesystem diagnostics",
+      "description": "As a contributor, I want Doge Code to detect common runtime and path issues so I can fix environment problems quickly.",
+      "acceptanceCriteria": [
+        "The doctor flow collects the current Bun version.",
+        "The doctor flow collects the current Node version.",
+        "The doctor flow checks whether the Doge config directory exists.",
+        "The doctor flow checks whether the main config file exists.",
+        "Each check records a status of pass, warn, or fail.",
+        "bun run version succeeds."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "",
+      "retryCount": 0,
+      "blocked": false
+    },
+    {
+      "id": "US-003",
+      "title": "Render a human-readable doctor report",
+      "description": "As a contributor, I want a readable terminal summary so I can understand failures without opening source files.",
+      "acceptanceCriteria": [
+        "doge doctor prints a clearly grouped terminal report.",
+        "Each check includes a label, status, and short explanation.",
+        "Warnings and failures are visually distinguishable in the output.",
+        "The command exits successfully when only warnings are present.",
+        "bun run version succeeds."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "retryCount": 0,
+      "blocked": false
+    },
+    {
+      "id": "US-004",
+      "title": "Add JSON output mode and documentation",
+      "description": "As a tooling author, I want doge doctor --json output so scripts can consume diagnostics automatically.",
+      "acceptanceCriteria": [
+        "doge doctor --json prints valid JSON.",
+        "The JSON payload reuses the shared doctor report shape.",
+        "README.md or docs include a short usage example for doge doctor.",
+        "bun run version succeeds."
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "retryCount": 0,
+      "blocked": false
+    }
+  ]
+}

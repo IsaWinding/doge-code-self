@@ -1,0 +1,223 @@
+{
+  "generatedAt": "2026-04-21T04-05-24-535Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 1.126,
+          "ok": false
+        },
+        {
+          "ms": 0.511,
+          "ok": false
+        },
+        {
+          "ms": 0.44,
+          "ok": false
+        },
+        {
+          "ms": 0.342,
+          "ok": false
+        },
+        {
+          "ms": 0.295,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.543,
+      "medianMs": 0.44,
+      "minMs": 0.295,
+      "maxMs": 1.126
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 0.424,
+          "ok": false
+        },
+        {
+          "ms": 0.321,
+          "ok": false
+        },
+        {
+          "ms": 0.28,
+          "ok": false
+        },
+        {
+          "ms": 0.305,
+          "ok": false
+        },
+        {
+          "ms": 0.317,
+          "ok": false
+        }
+      ],
+      "meanMs": 0.329,
+      "medianMs": 0.317,
+      "minMs": 0.28,
+      "maxMs": 0.424
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 52.444
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 6.095
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 41.4
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.423
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 66.688
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 175.303
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 2.122
+    },
+    {
+      "label": "system_prompt_warm_forced_prefetch",
+      "iterations": 50,
+      "ms": 18.35
+    },
+    {
+      "label": "custom_agent_context_current",
+      "iterations": 100,
+      "ms": 2.043
+    },
+    {
+      "label": "custom_agent_context_legacy",
+      "iterations": 100,
+      "ms": 26.971
+    },
+    {
+      "label": "compact_custom_prompt_current",
+      "iterations": 100,
+      "ms": 1.077
+    },
+    {
+      "label": "compact_custom_prompt_legacy",
+      "iterations": 100,
+      "ms": 25.256
+    },
+    {
+      "label": "auxiliary_claudemd_summary",
+      "iterations": 500,
+      "ms": 40.012
+    },
+    {
+      "label": "auxiliary_git_status_summary",
+      "iterations": 500,
+      "ms": 4.567
+    },
+    {
+      "label": "manual_session_memory_prep_current",
+      "iterations": 100,
+      "ms": 0.708
+    },
+    {
+      "label": "manual_session_memory_prep_legacy",
+      "iterations": 100,
+      "ms": 32.091
+    },
+    {
+      "label": "side_question_fallback_prep_current",
+      "iterations": 100,
+      "ms": 0.685
+    },
+    {
+      "label": "side_question_fallback_prep_legacy",
+      "iterations": 100,
+      "ms": 17.775
+    },
+    {
+      "label": "agent_summary_local_derivation",
+      "iterations": 5000,
+      "ms": 2.97
+    },
+    {
+      "label": "extract_memories_context_window",
+      "iterations": 5000,
+      "ms": 0.964
+    }
+  ],
+  "sizeBenchmarks": [
+    {
+      "label": "agent creation CLAUDE.md payload (synthetic large fixture)",
+      "beforeChars": 5580,
+      "afterChars": 1066
+    },
+    {
+      "label": "session memory git payload (synthetic large fixture)",
+      "beforeChars": 1269,
+      "afterChars": 598
+    },
+    {
+      "label": "manual session-memory system prompt",
+      "beforeChars": 25141,
+      "afterChars": 536
+    },
+    {
+      "label": "side-question fallback context bundle (synthetic large fixture)",
+      "beforeChars": 31990,
+      "afterChars": 1960
+    },
+    {
+      "label": "agent summary context window (synthetic transcript)",
+      "beforeChars": 1711,
+      "afterChars": 1275
+    },
+    {
+      "label": "extract memories context window (synthetic transcript)",
+      "beforeChars": 2216,
+      "afterChars": 890
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}

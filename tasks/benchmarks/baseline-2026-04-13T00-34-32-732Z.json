@@ -1,0 +1,198 @@
+{
+  "generatedAt": "2026-04-13T00-34-32-732Z",
+  "commandBenchmarks": [
+    {
+      "label": "bun run version",
+      "command": [
+        "run",
+        "version"
+      ],
+      "samples": [
+        {
+          "ms": 633.5,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 442.86,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 390.057,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 401.017,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 290.977,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 431.682,
+      "medianMs": 401.017,
+      "minMs": 290.977,
+      "maxMs": 633.5
+    },
+    {
+      "label": "bun run dev --help",
+      "command": [
+        "run",
+        "dev",
+        "--help"
+      ],
+      "samples": [
+        {
+          "ms": 1169.594,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1094.401,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1065.395,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1092.586,
+          "ok": true,
+          "exitCode": 0
+        },
+        {
+          "ms": 1073.74,
+          "ok": true,
+          "exitCode": 0
+        }
+      ],
+      "meanMs": 1099.143,
+      "medianMs": 1092.586,
+      "minMs": 1065.395,
+      "maxMs": 1169.594
+    }
+  ],
+  "microBenchmarks": [
+    {
+      "label": "preset_lookup_legacy",
+      "iterations": 250000,
+      "ms": 48.685
+    },
+    {
+      "label": "preset_lookup_current",
+      "iterations": 250000,
+      "ms": 5.833
+    },
+    {
+      "label": "preset_render_legacy",
+      "iterations": 20000,
+      "ms": 32.709
+    },
+    {
+      "label": "preset_render_current",
+      "iterations": 20000,
+      "ms": 0.32
+    },
+    {
+      "label": "resolve_storage_legacy",
+      "iterations": 120000,
+      "ms": 46.982
+    },
+    {
+      "label": "resolve_storage_current",
+      "iterations": 120000,
+      "ms": 165.708
+    },
+    {
+      "label": "system_prompt_warm_current",
+      "iterations": 50,
+      "ms": 1.878
+    },
+    {
+      "label": "system_prompt_warm_forced_prefetch",
+      "iterations": 50,
+      "ms": 17.155
+    },
+    {
+      "label": "custom_agent_context_current",
+      "iterations": 100,
+      "ms": 1.749
+    },
+    {
+      "label": "custom_agent_context_legacy",
+      "iterations": 100,
+      "ms": 21.959
+    },
+    {
+      "label": "compact_custom_prompt_current",
+      "iterations": 100,
+      "ms": 0.907
+    },
+    {
+      "label": "compact_custom_prompt_legacy",
+      "iterations": 100,
+      "ms": 14.276
+    },
+    {
+      "label": "auxiliary_claudemd_summary",
+      "iterations": 500,
+      "ms": 36.362
+    },
+    {
+      "label": "auxiliary_git_status_summary",
+      "iterations": 500,
+      "ms": 3.716
+    },
+    {
+      "label": "manual_session_memory_prep_current",
+      "iterations": 100,
+      "ms": 0.635
+    },
+    {
+      "label": "manual_session_memory_prep_legacy",
+      "iterations": 100,
+      "ms": 12.93
+    }
+  ],
+  "sizeBenchmarks": [
+    {
+      "label": "agent creation CLAUDE.md payload (synthetic large fixture)",
+      "beforeChars": 5580,
+      "afterChars": 1066
+    },
+    {
+      "label": "session memory git payload (synthetic large fixture)",
+      "beforeChars": 1269,
+      "afterChars": 598
+    },
+    {
+      "label": "manual session-memory system prompt",
+      "beforeChars": 25141,
+      "afterChars": 536
+    }
+  ],
+  "fileStats": [
+    {
+      "path": "src/components/Settings/Config.tsx",
+      "lines": 2337,
+      "bytes": 296178
+    },
+    {
+      "path": "src/utils/compatibleApiConfig.ts",
+      "lines": 441,
+      "bytes": 11213
+    },
+    {
+      "path": "src/utils/customModelPresets.ts",
+      "lines": 138,
+      "bytes": 4083
+    }
+  ]
+}
