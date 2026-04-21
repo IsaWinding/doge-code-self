@@ -20,6 +20,7 @@ import {
   getUserContext,
 } from '../src/context.js'
 import { buildSessionMemorySystemPrompt } from '../src/services/SessionMemory/prompts.js'
+import { buildSessionMemoryContextMessages } from '../src/services/SessionMemory/sessionMemory.js'
 import {
   buildAgentSummaryContextMessages,
   buildLocalAgentSummary,
@@ -329,6 +330,9 @@ function buildSummary(report: {
   const extractMemoriesContextWindow = microMap.get(
     'extract_memories_context_window',
   )
+  const sessionMemoryContextWindow = microMap.get(
+    'session_memory_context_window',
+  )
   const toolUseSummaryLocalDerivation = microMap.get(
     'tool_use_summary_local_derivation',
   )
@@ -411,6 +415,11 @@ function buildSummary(report: {
       `- extract-memories context slicing: ${extractMemoriesContextWindow.ms}ms for ${extractMemoriesContextWindow.iterations} iterations`,
     )
   }
+  if (sessionMemoryContextWindow) {
+    speedups.push(
+      `- session-memory context slicing: ${sessionMemoryContextWindow.ms}ms for ${sessionMemoryContextWindow.iterations} iterations`,
+    )
+  }
   if (toolUseSummaryLocalDerivation) {
     speedups.push(
       `- tool-use summary local derivation: ${toolUseSummaryLocalDerivation.ms}ms for ${toolUseSummaryLocalDerivation.iterations} iterations`,
@@ -449,297 +458,336 @@ function buildSummary(report: {
   ].join('\n')
 }
 
-const cwd = process.cwd()
-const outputDir = join(cwd, 'tasks', 'benchmarks')
-mkdirSync(outputDir, { recursive: true })
-ensureBootstrapMacro()
-enableConfigs()
+async function main(): Promise<void> {
+  const cwd = process.cwd()
+  const outputDir = join(cwd, 'tasks', 'benchmarks')
+  mkdirSync(outputDir, { recursive: true })
+  ensureBootstrapMacro()
+  enableConfigs()
 
-const presetQueries = [
-  ...getCustomModelPresets().map(preset => preset.id),
-  ...getCustomModelPresets().map(preset => preset.model),
-  'deepseek-chat',
-  'deepseek-reasoner',
-  'non-existent-model',
-]
+  const presetQueries = [
+    ...getCustomModelPresets().map(preset => preset.id),
+    ...getCustomModelPresets().map(preset => preset.model),
+    'deepseek-chat',
+    'deepseek-reasoner',
+    'non-existent-model',
+  ]
 
-let presetIndex = 0
-const nextPresetQuery = () => {
-  const value = presetQueries[presetIndex % presetQueries.length]!
-  presetIndex++
-  return value
-}
+  let presetIndex = 0
+  const nextPresetQuery = () => {
+    const value = presetQueries[presetIndex % presetQueries.length]!
+    presetIndex++
+    return value
+  }
 
-const sampleStorage: CustomApiStorageData = {
-  provider: 'openai',
-  baseURL: 'https://api.deepseek.com',
-  apiKey: 'sk-current',
-  model: 'deepseek-chat',
-  savedModels: ['deepseek-chat', 'deepseek-reasoner', 'kimi-k2.5'],
-  savedProfiles: [
-    {
-      id: 'deepseek-chat',
-      provider: 'openai',
-      baseURL: 'https://api.deepseek.com',
-      apiKey: 'sk-deepseek',
-      model: 'deepseek-chat',
+  const sampleStorage: CustomApiStorageData = {
+    provider: 'openai',
+    baseURL: 'https://api.deepseek.com',
+    apiKey: 'sk-current',
+    model: 'deepseek-chat',
+    savedModels: ['deepseek-chat', 'deepseek-reasoner', 'kimi-k2.5'],
+    savedProfiles: [
+      {
+        id: 'deepseek-chat',
+        provider: 'openai',
+        baseURL: 'https://api.deepseek.com',
+        apiKey: 'sk-deepseek',
+        model: 'deepseek-chat',
+      },
+      {
+        id: 'deepseek-reasoner',
+        provider: 'openai',
+        baseURL: 'https://api.deepseek.com',
+        apiKey: 'sk-deepseek',
+        model: 'deepseek-reasoner',
+      },
+      {
+        id: 'moonshot-kimi-k2.5',
+        provider: 'openai',
+        baseURL: 'https://api.moonshot.cn',
+        apiKey: 'sk-moonshot',
+        model: 'kimi-k2.5',
+      },
+    ],
+  }
+
+  const generatedAt = new Date().toISOString().replace(/[:.]/g, '-')
+
+  clearSystemPromptSections()
+  await getSystemPrompt([], 'deepseek-chat')
+  const benchmarkCwd = process.cwd()
+  const benchmarkCustomAgent = {
+    agentType: 'benchmark-agent',
+    whenToUse: 'Benchmark custom agent path',
+    source: 'userSettings' as const,
+    getSystemPrompt: () => 'Benchmark custom agent prompt',
+  }
+  const benchmarkToolUseContext = {
+    options: {
+      tools: [],
     },
+  }
+  const benchmarkBaseUserContext = await getUserContext()
+  const syntheticClaudeMdFixture = [
+    'Codebase and user instructions are shown below.',
+    '',
+    'Contents of /repo/AGENTS.md:',
+    '',
+    '# Build',
+    '- Always use bun',
+    '- Keep tests close to changed files',
+    '- Avoid unrelated refactors in restoration work',
+    'Narrative detail for the primary coding loop. '.repeat(40),
+    '',
+    'Contents of /repo/.claude/CLAUDE.md:',
+    '',
+    '# Coding Style',
+    '- Prefer focused modules',
+    '- Match surrounding file style',
+    '- Verify affected flows manually',
+    'Long-form rationale for coding standards. '.repeat(40),
+    '',
+    'Contents of /repo/.claude/rules/review.md:',
+    '',
+    '# Review',
+    '- Important: list bugs and regressions before summary',
+    '- Never hide uncertainty',
+    '- Prefer concrete file references',
+    'Extended review guidance and examples. '.repeat(40),
+  ].join('\n')
+  const benchmarkClaudeMd =
+    benchmarkBaseUserContext.claudeMd ?? syntheticClaudeMdFixture
+  const benchmarkUserContext = buildAuxiliaryUserContext(
+    benchmarkBaseUserContext.claudeMd
+      ? benchmarkBaseUserContext
+      : {
+          ...benchmarkBaseUserContext,
+          claudeMd: syntheticClaudeMdFixture,
+        },
     {
-      id: 'deepseek-reasoner',
-      provider: 'openai',
-      baseURL: 'https://api.deepseek.com',
-      apiKey: 'sk-deepseek',
-      model: 'deepseek-reasoner',
+      maxClaudeMdChars: 3200,
+      claudeMdSectionChars: 480,
     },
+  )
+  const benchmarkClaudeMdSummary = summarizeClaudeMdForAuxiliaryTask(
+    benchmarkClaudeMd,
     {
-      id: 'moonshot-kimi-k2.5',
-      provider: 'openai',
-      baseURL: 'https://api.moonshot.cn',
-      apiKey: 'sk-moonshot',
-      model: 'kimi-k2.5',
+      maxChars: 3200,
+      sectionMaxChars: 480,
     },
-  ],
-}
-
-const generatedAt = new Date().toISOString().replace(/[:.]/g, '-')
-
-clearSystemPromptSections()
-await getSystemPrompt([], 'deepseek-chat')
-const benchmarkCwd = process.cwd()
-const benchmarkCustomAgent = {
-  agentType: 'benchmark-agent',
-  whenToUse: 'Benchmark custom agent path',
-  source: 'userSettings' as const,
-  getSystemPrompt: () => 'Benchmark custom agent prompt',
-}
-const benchmarkToolUseContext = {
-  options: {
-    tools: [],
-  },
-}
-const benchmarkBaseUserContext = await getUserContext()
-const syntheticClaudeMdFixture = [
-  'Codebase and user instructions are shown below.',
-  '',
-  'Contents of /repo/AGENTS.md:',
-  '',
-  '# Build',
-  '- Always use bun',
-  '- Keep tests close to changed files',
-  '- Avoid unrelated refactors in restoration work',
-  'Narrative detail for the primary coding loop. '.repeat(40),
-  '',
-  'Contents of /repo/.claude/CLAUDE.md:',
-  '',
-  '# Coding Style',
-  '- Prefer focused modules',
-  '- Match surrounding file style',
-  '- Verify affected flows manually',
-  'Long-form rationale for coding standards. '.repeat(40),
-  '',
-  'Contents of /repo/.claude/rules/review.md:',
-  '',
-  '# Review',
-  '- Important: list bugs and regressions before summary',
-  '- Never hide uncertainty',
-  '- Prefer concrete file references',
-  'Extended review guidance and examples. '.repeat(40),
-].join('\n')
-const benchmarkClaudeMd =
-  benchmarkBaseUserContext.claudeMd ?? syntheticClaudeMdFixture
-const benchmarkUserContext = buildAuxiliaryUserContext(
-  benchmarkBaseUserContext.claudeMd
-    ? benchmarkBaseUserContext
-    : {
+  )
+  const syntheticGitStatusFixture = [
+    'This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
+    'Current branch: feature/context-optimization',
+    'Main branch (you will usually use this for PRs): main',
+    'Git user: doge',
+    `Status:\n${Array.from({ length: 30 }, (_, index) => `M src/context/file-${index}.ts`).join('\n')}`,
+    `Recent commits:\n${Array.from({ length: 8 }, (_, index) => `${index}abcd optimize context path ${index}`).join('\n')}`,
+  ].join('\n\n')
+  const benchmarkGitStatusSummary = summarizeGitStatusForAuxiliaryTask(
+    syntheticGitStatusFixture,
+    {
+      maxChars: 700,
+      maxStatusLines: 8,
+      maxCommitLines: 2,
+    },
+  )
+  const benchmarkSideQuestionFallbackBundle =
+    buildSideQuestionFallbackContextBundle({
+      userContext: {
         ...benchmarkBaseUserContext,
         claudeMd: syntheticClaudeMdFixture,
       },
-  {
-    maxClaudeMdChars: 3200,
-    claudeMdSectionChars: 480,
-  },
-)
-const benchmarkClaudeMdSummary = summarizeClaudeMdForAuxiliaryTask(
-  benchmarkClaudeMd,
-  {
-    maxChars: 3200,
-    sectionMaxChars: 480,
-  },
-)
-const syntheticGitStatusFixture = [
-  'This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.',
-  'Current branch: feature/context-optimization',
-  'Main branch (you will usually use this for PRs): main',
-  'Git user: doge',
-  `Status:\n${Array.from({ length: 30 }, (_, index) => `M src/context/file-${index}.ts`).join('\n')}`,
-  `Recent commits:\n${Array.from({ length: 8 }, (_, index) => `${index}abcd optimize context path ${index}`).join('\n')}`,
-].join('\n\n')
-const benchmarkGitStatusSummary = summarizeGitStatusForAuxiliaryTask(
-  syntheticGitStatusFixture,
-  {
-    maxChars: 700,
-    maxStatusLines: 8,
-    maxCommitLines: 2,
-  },
-)
-const benchmarkSideQuestionFallbackBundle =
-  buildSideQuestionFallbackContextBundle({
-    userContext: {
-      ...benchmarkBaseUserContext,
-      claudeMd: syntheticClaudeMdFixture,
-    },
-    systemContext: {
-      gitStatus: syntheticGitStatusFixture,
-    },
-    customSystemPrompt: undefined,
-    appendSystemPrompt: undefined,
-  })
-const syntheticAgentSummaryTranscript: Message[] = Array.from(
-  { length: 6 },
-  (_, index) => {
-    const turn = index + 1
-    return [
-      {
-        type: 'user',
-        uuid: `agent-user-${turn}`,
-        message: {
-          content: `Continue implementation step ${turn}`,
-        },
+      systemContext: {
+        gitStatus: syntheticGitStatusFixture,
       },
-      {
-        type: 'assistant',
-        uuid: `agent-assistant-${turn}`,
-        message: {
-          id: `agent-turn-${turn}`,
-          content: [
-            {
-              type: 'tool_use',
-              id: `agent-tool-${turn}`,
-              name: turn % 2 === 0 ? 'Edit' : 'Read',
-              input: {
-                file_path: `src/feature/file-${turn}.ts`,
+      customSystemPrompt: undefined,
+      appendSystemPrompt: undefined,
+    })
+  const syntheticAgentSummaryTranscript: Message[] = Array.from(
+    { length: 6 },
+    (_, index) => {
+      const turn = index + 1
+      return [
+        {
+          type: 'user',
+          uuid: `agent-user-${turn}`,
+          message: {
+            content: `Continue implementation step ${turn}`,
+          },
+        },
+        {
+          type: 'assistant',
+          uuid: `agent-assistant-${turn}`,
+          message: {
+            id: `agent-turn-${turn}`,
+            content: [
+              {
+                type: 'tool_use',
+                id: `agent-tool-${turn}`,
+                name: turn % 2 === 0 ? 'Edit' : 'Read',
+                input: {
+                  file_path: `src/feature/file-${turn}.ts`,
+                },
               },
-            },
-          ],
+            ],
+          },
         },
-      },
-    ] satisfies Message[]
-  },
-).flat()
-const benchmarkAgentSummaryContext = buildAgentSummaryContextMessages(
-  syntheticAgentSummaryTranscript,
-)
-const benchmarkAgentSummaryFullChars = JSON.stringify(
-  syntheticAgentSummaryTranscript,
-).length
-const benchmarkAgentSummaryReducedChars = JSON.stringify(
-  benchmarkAgentSummaryContext,
-).length
-const syntheticExtractMemoriesTranscript: Message[] = Array.from(
-  { length: 10 },
-  (_, index) => {
-    const turn = index + 1
-    return [
-      {
-        type: 'user',
-        uuid: `memory-user-${turn}`,
-        message: {
-          content: `Conversation turn ${turn}`,
+      ] satisfies Message[]
+    },
+  ).flat()
+  const benchmarkAgentSummaryContext = buildAgentSummaryContextMessages(
+    syntheticAgentSummaryTranscript,
+  )
+  const benchmarkAgentSummaryFullChars = JSON.stringify(
+    syntheticAgentSummaryTranscript,
+  ).length
+  const benchmarkAgentSummaryReducedChars = JSON.stringify(
+    benchmarkAgentSummaryContext,
+  ).length
+  const syntheticExtractMemoriesTranscript: Message[] = Array.from(
+    { length: 10 },
+    (_, index) => {
+      const turn = index + 1
+      return [
+        {
+          type: 'user',
+          uuid: `memory-user-${turn}`,
+          message: {
+            content: `Conversation turn ${turn}`,
+          },
         },
-      },
-      {
-        type: 'assistant',
-        uuid: `memory-assistant-${turn}`,
-        message: {
-          id: `memory-turn-${turn}`,
-          content: [
-            {
-              type: 'text',
-              text: `Assistant update ${turn}`,
-            },
-          ],
+        {
+          type: 'assistant',
+          uuid: `memory-assistant-${turn}`,
+          message: {
+            id: `memory-turn-${turn}`,
+            content: [
+              {
+                type: 'text',
+                text: `Assistant update ${turn}`,
+              },
+            ],
+          },
         },
+      ] satisfies Message[]
+    },
+  ).flat()
+  const benchmarkExtractMemoriesContext = buildExtractMemoriesContextMessages(
+    syntheticExtractMemoriesTranscript,
+    'memory-assistant-6',
+  )
+  const benchmarkExtractMemoriesFullChars = JSON.stringify(
+    syntheticExtractMemoriesTranscript,
+  ).length
+  const benchmarkExtractMemoriesReducedChars = JSON.stringify(
+    benchmarkExtractMemoriesContext,
+  ).length
+  const syntheticSessionMemoryTranscript: Message[] = Array.from(
+    { length: 10 },
+    (_, index) => {
+      const turn = index + 1
+      return [
+        {
+          type: 'user',
+          uuid: `session-user-${turn}`,
+          message: {
+            content: `Session conversation turn ${turn}`,
+          },
+        },
+        {
+          type: 'assistant',
+          uuid: `session-assistant-${turn}`,
+          message: {
+            id: `session-turn-${turn}`,
+            content: [
+              {
+                type: 'text',
+                text: `Session assistant update ${turn}`,
+              },
+            ],
+          },
+        },
+      ] satisfies Message[]
+    },
+  ).flat()
+  const benchmarkSessionMemoryContext = buildSessionMemoryContextMessages(
+    syntheticSessionMemoryTranscript,
+    'session-assistant-6',
+  )
+  const benchmarkSessionMemoryFullChars = JSON.stringify(
+    syntheticSessionMemoryTranscript,
+  ).length
+  const benchmarkSessionMemoryReducedChars = JSON.stringify(
+    benchmarkSessionMemoryContext,
+  ).length
+  const syntheticToolUseBatch = [
+    {
+      name: 'Read',
+      input: {
+        file_path: 'src/services/api/openaiCompat.ts',
       },
-    ] satisfies Message[]
-  },
-).flat()
-const benchmarkExtractMemoriesContext = buildExtractMemoriesContextMessages(
-  syntheticExtractMemoriesTranscript,
-  'memory-assistant-6',
-)
-const benchmarkExtractMemoriesFullChars = JSON.stringify(
-  syntheticExtractMemoriesTranscript,
-).length
-const benchmarkExtractMemoriesReducedChars = JSON.stringify(
-  benchmarkExtractMemoriesContext,
-).length
-const syntheticToolUseBatch = [
-  {
-    name: 'Read',
-    input: {
-      file_path: 'src/services/api/openaiCompat.ts',
+      output: 'loaded',
     },
-    output: 'loaded',
-  },
-  {
-    name: 'Edit',
-    input: {
-      file_path: 'src/services/toolUseSummary/toolUseSummaryGenerator.ts',
+    {
+      name: 'Edit',
+      input: {
+        file_path: 'src/services/toolUseSummary/toolUseSummaryGenerator.ts',
+      },
+      output: 'patched',
     },
-    output: 'patched',
-  },
-  {
-    name: 'Bash',
-    input: {
-      command: 'bun test ./src/services/toolUseSummary/toolUseSummaryGenerator.test.ts',
+    {
+      name: 'Bash',
+      input: {
+        command: 'bun test ./src/services/toolUseSummary/toolUseSummaryGenerator.test.ts',
+      },
+      output: 'pass',
     },
-    output: 'pass',
-  },
-] as const
-const benchmarkToolUseSummaryLocal = buildLocalToolUseSummary(
-  syntheticToolUseBatch as unknown as Parameters<typeof buildLocalToolUseSummary>[0],
-)
-const benchmarkToolUseSummaryPromptPayload = buildToolUseSummaryPromptPayload({
-  tools: syntheticToolUseBatch as unknown as Parameters<
-    typeof buildToolUseSummaryPromptPayload
-  >[0]['tools'],
-  lastAssistantText:
-    'Inspect the tool-use summary path and verify the optimized fallback with tests.',
-})
-const syntheticFallbackToolUseBatch: ToolInfo[] = Array.from(
-  { length: 4 },
-  (_, index) => ({
-    name: `UnknownTool${index + 1}`,
-    input: {
-      payload: `input-${index}`.repeat(80),
-    },
-    output: `output-${index}`.repeat(80),
-  }),
-)
-const benchmarkToolUseSummaryFallbackPayloadCurrent =
-  buildToolUseSummaryPromptPayload({
-    tools: syntheticFallbackToolUseBatch,
+  ] as const
+  const benchmarkToolUseSummaryLocal = buildLocalToolUseSummary(
+    syntheticToolUseBatch as unknown as Parameters<typeof buildLocalToolUseSummary>[0],
+  )
+  const benchmarkToolUseSummaryPromptPayload = buildToolUseSummaryPromptPayload({
+    tools: syntheticToolUseBatch as unknown as Parameters<
+      typeof buildToolUseSummaryPromptPayload
+    >[0]['tools'],
     lastAssistantText:
-      'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+      'Inspect the tool-use summary path and verify the optimized fallback with tests.',
   })
-const benchmarkToolUseSummaryFallbackPayloadLegacy =
-  legacyBuildToolUseSummaryPromptPayload({
-    tools: syntheticFallbackToolUseBatch,
-    lastAssistantText:
-      'Build a concise fallback summary even when many unknown tools return verbose structured output.',
-  })
-const benchmarkManualSessionMemoryPrompt = buildSessionMemorySystemPrompt()
-const benchmarkLegacySessionMemoryPrompt = (
-  await getSystemPrompt([], 'deepseek-chat')
-).join('\n\n')
+  const syntheticFallbackToolUseBatch: ToolInfo[] = Array.from(
+    { length: 4 },
+    (_, index) => ({
+      name: `UnknownTool${index + 1}`,
+      input: {
+        payload: `input-${index}`.repeat(80),
+      },
+      output: `output-${index}`.repeat(80),
+    }),
+  )
+  const benchmarkToolUseSummaryFallbackPayloadCurrent =
+    buildToolUseSummaryPromptPayload({
+      tools: syntheticFallbackToolUseBatch,
+      lastAssistantText:
+        'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+    })
+  const benchmarkToolUseSummaryFallbackPayloadLegacy =
+    legacyBuildToolUseSummaryPromptPayload({
+      tools: syntheticFallbackToolUseBatch,
+      lastAssistantText:
+        'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+    })
+  const benchmarkManualSessionMemoryPrompt = buildSessionMemorySystemPrompt()
+  const benchmarkLegacySessionMemoryPrompt = (
+    await getSystemPrompt([], 'deepseek-chat')
+  ).join('\n\n')
 
-const report = {
-  generatedAt,
-  commandBenchmarks: [
-    runCommandBenchmark(cwd, 'bun run version', ['run', 'version']),
-    runCommandBenchmark(cwd, 'bun run dev --help', ['run', 'dev', '--help']),
-  ],
-  microBenchmarks: [
+  const report = {
+    generatedAt,
+    commandBenchmarks: [
+      runCommandBenchmark(cwd, 'bun run version', ['run', 'version']),
+      runCommandBenchmark(cwd, 'bun run dev --help', ['run', 'dev', '--help']),
+    ],
+    microBenchmarks: [
     runMicroBenchmark('preset_lookup_legacy', 250_000, () => {
       legacyFindCustomModelPreset(nextPresetQuery())
     }),
@@ -924,6 +972,12 @@ const report = {
         'memory-assistant-6',
       )
     }),
+    runMicroBenchmark('session_memory_context_window', 5_000, () => {
+      buildSessionMemoryContextMessages(
+        syntheticSessionMemoryTranscript,
+        'session-assistant-6',
+      )
+    }),
     runMicroBenchmark('tool_use_summary_local_derivation', 5_000, () => {
       buildLocalToolUseSummary(
         syntheticToolUseBatch as unknown as Parameters<
@@ -945,8 +999,8 @@ const report = {
           'Build a concise fallback summary even when many unknown tools return verbose structured output.',
       })
     }),
-  ],
-  sizeBenchmarks: [
+    ],
+    sizeBenchmarks: [
     {
       label: benchmarkBaseUserContext.claudeMd
         ? 'agent creation CLAUDE.md payload (workspace)'
@@ -990,6 +1044,11 @@ const report = {
       afterChars: benchmarkExtractMemoriesReducedChars,
     },
     {
+      label: 'session memory context window (synthetic transcript)',
+      beforeChars: benchmarkSessionMemoryFullChars,
+      afterChars: benchmarkSessionMemoryReducedChars,
+    },
+    {
       label: 'tool use summary prompt payload (synthetic batch)',
       beforeChars: benchmarkToolUseSummaryPromptPayload.length,
       afterChars: benchmarkToolUseSummaryLocal?.length ?? 0,
@@ -999,8 +1058,8 @@ const report = {
       beforeChars: benchmarkToolUseSummaryFallbackPayloadLegacy.length,
       afterChars: benchmarkToolUseSummaryFallbackPayloadCurrent.length,
     },
-  ],
-  fileStats: [
+    ],
+    fileStats: [
     {
       path: 'src/components/Settings/Config.tsx',
       lines: countLines(join(cwd, 'src', 'components', 'Settings', 'Config.tsx')),
@@ -1022,13 +1081,26 @@ const report = {
         join(cwd, 'src', 'utils', 'customModelPresets.ts'),
       ).length,
     },
-  ],
+    ],
+  }
+
+  const jsonPath = join(outputDir, `baseline-${generatedAt}.json`)
+  const markdownPath = join(outputDir, `baseline-${generatedAt}.md`)
+  writeFileSync(jsonPath, JSON.stringify(report, null, 2))
+  writeFileSync(markdownPath, buildSummary(report))
+
+  console.log(`Wrote benchmark JSON: ${jsonPath}`)
+  console.log(`Wrote benchmark summary: ${markdownPath}`)
 }
 
-const jsonPath = join(outputDir, `baseline-${generatedAt}.json`)
-const markdownPath = join(outputDir, `baseline-${generatedAt}.md`)
-writeFileSync(jsonPath, JSON.stringify(report, null, 2))
-writeFileSync(markdownPath, buildSummary(report))
-
-console.log(`Wrote benchmark JSON: ${jsonPath}`)
-console.log(`Wrote benchmark summary: ${markdownPath}`)
+main()
+  .then(() => {
+    // Benchmark setup imports shared runtime modules that may leave timers or
+    // watchers alive. Exit explicitly once the snapshot is written so CI and
+    // iterative optimization runs do not hang waiting on unrelated handles.
+    process.exit(0)
+  })
+  .catch(error => {
+    console.error(error)
+    process.exit(1)
+  })

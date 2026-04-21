@@ -46,6 +46,7 @@ import {
 import {
   DEFAULT_SESSION_MEMORY_CONFIG,
   getSessionMemoryConfig,
+  getLastSummarizedMessageId,
   getToolCallsBetweenUpdates,
   hasMetInitializationThreshold,
   hasMetUpdateThreshold,
@@ -95,12 +96,45 @@ function getSessionMemoryRemoteConfig(): Partial<SessionMemoryConfig> {
 // ============================================================================
 
 let lastMemoryMessageUuid: string | undefined
+const OMITTED_SESSION_MEMORY_MARKER =
+  'Earlier conversation omitted. Update session memory using only the new messages below together with the existing session memory file.'
 
 /**
  * Reset the last memory message UUID (for testing)
  */
 export function resetLastMemoryMessageUuid(): void {
   lastMemoryMessageUuid = undefined
+}
+
+export function buildSessionMemoryContextMessages(
+  messages: Message[],
+  sinceUuid = getLastSummarizedMessageId(),
+): Message[] {
+  if (!sinceUuid) {
+    return messages
+  }
+
+  const sinceIndex = messages.findIndex(message => message.uuid === sinceUuid)
+  if (sinceIndex === -1) {
+    return messages
+  }
+
+  const slicedMessages = messages.slice(sinceIndex + 1)
+  if (slicedMessages.length === 0) {
+    return []
+  }
+
+  if (slicedMessages[0]?.type === 'assistant') {
+    return [
+      createUserMessage({
+        content: OMITTED_SESSION_MEMORY_MARKER,
+        isMeta: true,
+      }),
+      ...slicedMessages,
+    ]
+  }
+
+  return slicedMessages
 }
 
 function countToolCallsSince(
@@ -320,7 +354,12 @@ const extractSessionMemory = sequential(async function (
       systemContext: rawSystemContext,
     }),
     toolUseContext: setupContext,
-    forkContextMessages: messages,
+    forkContextMessages: buildSessionMemoryContextMessages(messages),
+  }
+
+  if (cacheSafeParams.forkContextMessages.length === 0) {
+    markExtractionCompleted()
+    return
   }
 
   // Run session memory extraction using runForkedAgent for prompt caching
@@ -436,7 +475,7 @@ export async function manuallyExtractSessionMemory(
         userContext,
         systemContext,
         toolUseContext: setupContext,
-        forkContextMessages: messages,
+        forkContextMessages: buildSessionMemoryContextMessages(messages),
       },
       canUseTool: createMemoryFileCanUseTool(memoryPath),
       querySource: 'session_memory',
