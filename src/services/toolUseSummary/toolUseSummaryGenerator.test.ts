@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildLocalToolUseSummary,
   buildToolUseSummaryPromptPayload,
+  type ToolInfo,
 } from './toolUseSummaryGenerator.js'
 
 describe('buildLocalToolUseSummary', () => {
@@ -116,5 +117,24 @@ describe('buildToolUseSummaryPromptPayload', () => {
     expect(payload).toContain('Tools completed:')
     expect(payload).toContain('Tool: Bash')
     expect(payload).toContain('...')
+  })
+
+  test('keeps fallback payload compact across many tools', () => {
+    const tools: ToolInfo[] = Array.from({ length: 4 }, (_, index) => ({
+      name: `UnknownTool${index}`,
+      input: {
+        payload: 'input'.repeat(80),
+      },
+      output: 'output'.repeat(80),
+    }))
+
+    const payload = buildToolUseSummaryPromptPayload({
+      tools,
+      lastAssistantText:
+        'Need a very compact fallback summary payload even when multiple tools return large blobs.',
+    })
+
+    expect(payload.length).toBeLessThanOrEqual(760)
+    expect(payload.match(/Tool: UnknownTool/g)?.length).toBe(4)
   })
 })

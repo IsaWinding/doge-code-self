@@ -54,7 +54,10 @@ import {
   createMicrocompactBoundaryMessage,
   stripSignatureBlocks,
 } from './utils/messages.js'
-import { generateToolUseSummary } from './services/toolUseSummary/toolUseSummaryGenerator.js'
+import {
+  buildLocalToolUseSummary,
+  generateToolUseSummary,
+} from './services/toolUseSummary/toolUseSummaryGenerator.js'
 import { prependUserContext, appendSystemContext } from './utils/api.js'
 import {
   createAttachmentMessage,
@@ -1433,52 +1436,64 @@ async function* queryLoop(
         }
       }
 
-      // Collect tool info for summary generation
       const toolUseIds = toolUseBlocks.map(block => block.id)
-      const toolInfoForSummary = toolUseBlocks.map(block => {
-        // Find the corresponding tool result
-        const toolResult = toolResults.find(
-          result =>
-            result.type === 'user' &&
-            Array.isArray(result.message.content) &&
-            result.message.content.some(
-              content =>
-                content.type === 'tool_result' &&
-                content.tool_use_id === block.id,
-            ),
-        )
-        const resultContent =
-          toolResult?.type === 'user' &&
-          Array.isArray(toolResult.message.content)
-            ? toolResult.message.content.find(
-                (c): c is ToolResultBlockParam =>
-                  c.type === 'tool_result' && c.tool_use_id === block.id,
-              )
-            : undefined
-        return {
-          name: block.name,
-          input: block.input,
-          output:
-            resultContent && 'content' in resultContent
-              ? resultContent.content
-              : null,
-        }
-      })
+      const summaryInputTools = toolUseBlocks.map(block => ({
+        name: block.name,
+        input: block.input,
+        output: null,
+      }))
+      const localToolUseSummary = buildLocalToolUseSummary(summaryInputTools)
 
-      // Fire off summary generation without blocking the next API call
-      nextPendingToolUseSummary = generateToolUseSummary({
-        tools: toolInfoForSummary,
-        signal: toolUseContext.abortController.signal,
-        isNonInteractiveSession: toolUseContext.options.isNonInteractiveSession,
-        lastAssistantText,
-      })
-        .then(summary => {
-          if (summary) {
-            return createToolUseSummaryMessage(summary, toolUseIds)
+      if (localToolUseSummary) {
+        nextPendingToolUseSummary = Promise.resolve(
+          createToolUseSummaryMessage(localToolUseSummary, toolUseIds),
+        )
+      } else {
+        const toolInfoForSummary = toolUseBlocks.map(block => {
+          // Find the corresponding tool result only when we need the fallback model summary.
+          const toolResult = toolResults.find(
+            result =>
+              result.type === 'user' &&
+              Array.isArray(result.message.content) &&
+              result.message.content.some(
+                content =>
+                  content.type === 'tool_result' &&
+                  content.tool_use_id === block.id,
+              ),
+          )
+          const resultContent =
+            toolResult?.type === 'user' &&
+            Array.isArray(toolResult.message.content)
+              ? toolResult.message.content.find(
+                  (c): c is ToolResultBlockParam =>
+                    c.type === 'tool_result' && c.tool_use_id === block.id,
+                )
+              : undefined
+          return {
+            name: block.name,
+            input: block.input,
+            output:
+              resultContent && 'content' in resultContent
+                ? resultContent.content
+                : null,
           }
-          return null
         })
-        .catch(() => null)
+
+        // Fire off summary generation without blocking the next API call
+        nextPendingToolUseSummary = generateToolUseSummary({
+          tools: toolInfoForSummary,
+          signal: toolUseContext.abortController.signal,
+          isNonInteractiveSession: toolUseContext.options.isNonInteractiveSession,
+          lastAssistantText,
+        })
+          .then(summary => {
+            if (summary) {
+              return createToolUseSummaryMessage(summary, toolUseIds)
+            }
+            return null
+          })
+          .catch(() => null)
+      }
     }
 
     // We were aborted during tool calls

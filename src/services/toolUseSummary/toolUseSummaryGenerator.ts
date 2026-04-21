@@ -24,7 +24,12 @@ Examples:
 - Read config.json
 - Ran failing tests`
 
-type ToolInfo = {
+const MAX_SUMMARY_INTENT_CHARS = 120
+const MAX_SUMMARY_PROMPT_CHARS = 700
+const MIN_FIELD_CHARS = 48
+const MAX_FIELD_CHARS = 180
+
+export type ToolInfo = {
   name: string
   input: unknown
   output: unknown
@@ -216,19 +221,18 @@ export function buildToolUseSummaryPromptPayload({
   tools: ToolInfo[]
   lastAssistantText?: string
 }): string {
+  const contextPrefix = lastAssistantText
+    ? `User's intent (from assistant's last message): ${lastAssistantText.slice(0, MAX_SUMMARY_INTENT_CHARS)}\n\n`
+    : ''
+  const header = `${contextPrefix}Tools completed:\n\n`
+  const footer = `\n\nLabel:`
+  const perFieldBudget = getPerFieldBudget(tools, header.length, footer.length)
+
   const toolSummaries = tools
-    .map(tool => {
-      const inputStr = truncateJson(tool.input, 300)
-      const outputStr = truncateJson(tool.output, 300)
-      return `Tool: ${tool.name}\nInput: ${inputStr}\nOutput: ${outputStr}`
-    })
+    .map(tool => buildPromptToolSummary(tool, perFieldBudget))
     .join('\n\n')
 
-  const contextPrefix = lastAssistantText
-    ? `User's intent (from assistant's last message): ${lastAssistantText.slice(0, 200)}\n\n`
-    : ''
-
-  return `${contextPrefix}Tools completed:\n\n${toolSummaries}\n\nLabel:`
+  return `${header}${toolSummaries}${footer}`
 }
 
 /**
@@ -299,4 +303,57 @@ function truncateJson(value: unknown, maxLength: number): string {
   } catch {
     return '[unable to serialize]'
   }
+}
+
+function buildPromptToolSummary(
+  tool: ToolInfo,
+  perFieldBudget: number,
+): string {
+  const header = `Tool: ${tool.name}`
+  const outputMissing =
+    tool.output === null || tool.output === undefined || tool.output === ''
+  const inputStr = truncateJson(tool.input, perFieldBudget)
+  if (outputMissing) {
+    return `${header}\nInput: ${inputStr}`
+  }
+
+  const outputStr = truncateJson(tool.output, perFieldBudget)
+  return `${header}\nInput: ${inputStr}\nOutput: ${outputStr}`
+}
+
+function getPerFieldBudget(
+  tools: ToolInfo[],
+  headerLength: number,
+  footerLength: number,
+): number {
+  if (tools.length === 0) {
+    return MAX_FIELD_CHARS
+  }
+
+  const fieldsPerTool = tools.map(tool =>
+    tool.output === null || tool.output === undefined || tool.output === ''
+      ? 1
+      : 2,
+  )
+  const toolShellChars = tools.reduce((sum, tool, index) => {
+    const fields = fieldsPerTool[index]!
+    return (
+      sum +
+      `Tool: ${tool.name}\nInput: `.length +
+      (fields === 2 ? `\nOutput: `.length : 0)
+    )
+  }, 0)
+  const separatorChars = Math.max(0, tools.length - 1) * '\n\n'.length
+  const totalFields = fieldsPerTool.reduce((sum, count) => sum + count, 0)
+  const availableFieldChars =
+    MAX_SUMMARY_PROMPT_CHARS -
+    headerLength -
+    footerLength -
+    toolShellChars -
+    separatorChars
+
+  return Math.max(
+    12,
+    Math.min(MAX_FIELD_CHARS, Math.floor(availableFieldChars / totalFields)),
+  )
 }

@@ -28,6 +28,7 @@ import { buildExtractMemoriesContextMessages } from '../src/services/extractMemo
 import {
   buildLocalToolUseSummary,
   buildToolUseSummaryPromptPayload,
+  type ToolInfo,
 } from '../src/services/toolUseSummary/toolUseSummaryGenerator.js'
 import { summarizeClaudeMdForAuxiliaryTask } from '../src/utils/claudeMdSummary.js'
 import { summarizeGitStatusForAuxiliaryTask } from '../src/utils/gitStatusSummary.js'
@@ -255,6 +256,28 @@ function legacyResolveCompatibleStorage(
   }
 }
 
+function legacyBuildToolUseSummaryPromptPayload({
+  tools,
+  lastAssistantText,
+}: {
+  tools: ToolInfo[]
+  lastAssistantText?: string
+}): string {
+  const toolSummaries = tools
+    .map(tool => {
+      const inputStr = JSON.stringify(tool.input)
+      const outputStr = JSON.stringify(tool.output)
+      return `Tool: ${tool.name}\nInput: ${inputStr.length <= 300 ? inputStr : `${inputStr.slice(0, 297)}...`}\nOutput: ${outputStr.length <= 300 ? outputStr : `${outputStr.slice(0, 297)}...`}`
+    })
+    .join('\n\n')
+
+  const contextPrefix = lastAssistantText
+    ? `User's intent (from assistant's last message): ${lastAssistantText.slice(0, 200)}\n\n`
+    : ''
+
+  return `${contextPrefix}Tools completed:\n\n${toolSummaries}\n\nLabel:`
+}
+
 function buildSummary(report: {
   generatedAt: string
   commandBenchmarks: CommandBenchmark[]
@@ -308,6 +331,12 @@ function buildSummary(report: {
   )
   const toolUseSummaryLocalDerivation = microMap.get(
     'tool_use_summary_local_derivation',
+  )
+  const toolUseSummaryFallbackPayloadCurrent = microMap.get(
+    'tool_use_summary_fallback_payload_current',
+  )
+  const toolUseSummaryFallbackPayloadLegacy = microMap.get(
+    'tool_use_summary_fallback_payload_legacy',
   )
   const sizeLines = report.sizeBenchmarks.map(benchmark => {
     const reduction =
@@ -385,6 +414,14 @@ function buildSummary(report: {
   if (toolUseSummaryLocalDerivation) {
     speedups.push(
       `- tool-use summary local derivation: ${toolUseSummaryLocalDerivation.ms}ms for ${toolUseSummaryLocalDerivation.iterations} iterations`,
+    )
+  }
+  if (
+    toolUseSummaryFallbackPayloadCurrent &&
+    toolUseSummaryFallbackPayloadLegacy
+  ) {
+    speedups.push(
+      `- tool-use summary fallback prompt assembly: ${round(toolUseSummaryFallbackPayloadLegacy.ms / toolUseSummaryFallbackPayloadCurrent.ms)}x versus the previous payload builder`,
     )
   }
 
@@ -669,6 +706,28 @@ const benchmarkToolUseSummaryPromptPayload = buildToolUseSummaryPromptPayload({
   lastAssistantText:
     'Inspect the tool-use summary path and verify the optimized fallback with tests.',
 })
+const syntheticFallbackToolUseBatch: ToolInfo[] = Array.from(
+  { length: 4 },
+  (_, index) => ({
+    name: `UnknownTool${index + 1}`,
+    input: {
+      payload: `input-${index}`.repeat(80),
+    },
+    output: `output-${index}`.repeat(80),
+  }),
+)
+const benchmarkToolUseSummaryFallbackPayloadCurrent =
+  buildToolUseSummaryPromptPayload({
+    tools: syntheticFallbackToolUseBatch,
+    lastAssistantText:
+      'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+  })
+const benchmarkToolUseSummaryFallbackPayloadLegacy =
+  legacyBuildToolUseSummaryPromptPayload({
+    tools: syntheticFallbackToolUseBatch,
+    lastAssistantText:
+      'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+  })
 const benchmarkManualSessionMemoryPrompt = buildSessionMemorySystemPrompt()
 const benchmarkLegacySessionMemoryPrompt = (
   await getSystemPrompt([], 'deepseek-chat')
@@ -872,6 +931,20 @@ const report = {
         >[0],
       )
     }),
+    runMicroBenchmark('tool_use_summary_fallback_payload_legacy', 5_000, () => {
+      legacyBuildToolUseSummaryPromptPayload({
+        tools: syntheticFallbackToolUseBatch,
+        lastAssistantText:
+          'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+      })
+    }),
+    runMicroBenchmark('tool_use_summary_fallback_payload_current', 5_000, () => {
+      buildToolUseSummaryPromptPayload({
+        tools: syntheticFallbackToolUseBatch,
+        lastAssistantText:
+          'Build a concise fallback summary even when many unknown tools return verbose structured output.',
+      })
+    }),
   ],
   sizeBenchmarks: [
     {
@@ -920,6 +993,11 @@ const report = {
       label: 'tool use summary prompt payload (synthetic batch)',
       beforeChars: benchmarkToolUseSummaryPromptPayload.length,
       afterChars: benchmarkToolUseSummaryLocal?.length ?? 0,
+    },
+    {
+      label: 'tool use summary fallback payload (synthetic unknown batch)',
+      beforeChars: benchmarkToolUseSummaryFallbackPayloadLegacy.length,
+      afterChars: benchmarkToolUseSummaryFallbackPayloadCurrent.length,
     },
   ],
   fileStats: [
