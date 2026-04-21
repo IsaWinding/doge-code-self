@@ -5,6 +5,7 @@
  * Used by the SDK to provide high-level progress updates to clients.
  */
 
+import { basename } from 'path'
 import { E_TOOL_USE_SUMMARY_GENERATION_FAILED } from '../../constants/errorIds.js'
 import { toError } from '../../utils/errors.js'
 import { logError } from '../../utils/log.js'
@@ -36,6 +37,200 @@ export type GenerateToolUseSummaryParams = {
   lastAssistantText?: string
 }
 
+type DerivedLabel = {
+  label: string
+  category:
+    | 'file'
+    | 'test'
+    | 'build'
+    | 'lint'
+    | 'search'
+    | 'git'
+    | 'command'
+  target?: string
+}
+
+function normalizeLabel(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function truncateTarget(value: string, maxLength = 24): string {
+  return value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength - 3)}...`
+}
+
+function formatTarget(value: string): string {
+  const trimmed = normalizeLabel(value)
+  return truncateTarget(basename(trimmed))
+}
+
+function buildCommandLabel(command: string): DerivedLabel {
+  const normalized = normalizeLabel(command)
+  const lower = normalized.toLowerCase()
+
+  if (
+    /\b(bun test|npm test|pnpm test|yarn test|vitest|jest|pytest|cargo test|go test)\b/.test(
+      lower,
+    )
+  ) {
+    return { label: 'Ran tests', category: 'test' }
+  }
+  if (
+    /\b(bun run build|npm run build|pnpm build|yarn build|tsc|webpack|vite build|cargo build|dotnet build)\b/.test(
+      lower,
+    )
+  ) {
+    return { label: 'Built project', category: 'build' }
+  }
+  if (/\b(lint|eslint|biome|ruff|stylelint)\b/.test(lower)) {
+    return { label: 'Linted code', category: 'lint' }
+  }
+  if (/\bgit status\b/.test(lower)) {
+    return { label: 'Checked git status', category: 'git' }
+  }
+  if (/\bgit diff\b/.test(lower)) {
+    return { label: 'Reviewed git diff', category: 'git' }
+  }
+  if (/\b(rg|grep|findstr|select-string)\b/.test(lower)) {
+    return { label: 'Searched codebase', category: 'search' }
+  }
+
+  return { label: 'Ran command', category: 'command' }
+}
+
+function deriveToolLabel(tool: ToolInfo): DerivedLabel | null {
+  const toolName = normalizeLabel(tool.name)
+  const lowerToolName = toolName.toLowerCase()
+  const input =
+    typeof tool.input === 'object' && tool.input !== null
+      ? (tool.input as Record<string, unknown>)
+      : undefined
+
+  const filePath =
+    typeof input?.file_path === 'string'
+      ? formatTarget(input.file_path)
+      : typeof input?.path === 'string'
+        ? formatTarget(input.path)
+        : undefined
+  const pattern =
+    typeof input?.pattern === 'string'
+      ? truncateTarget(normalizeLabel(input.pattern))
+      : typeof input?.query === 'string'
+        ? truncateTarget(normalizeLabel(input.query))
+        : undefined
+  const command =
+    typeof input?.command === 'string'
+      ? input.command
+      : typeof input?.prompt === 'string'
+        ? input.prompt
+        : undefined
+
+  if (/read/i.test(lowerToolName) && filePath) {
+    return {
+      label: `Read ${filePath}`,
+      category: 'file',
+      target: filePath,
+    }
+  }
+  if (/edit|replace|patch/i.test(lowerToolName) && filePath) {
+    return {
+      label: `Edited ${filePath}`,
+      category: 'file',
+      target: filePath,
+    }
+  }
+  if (/write|create/i.test(lowerToolName) && filePath) {
+    return {
+      label: `Created ${filePath}`,
+      category: 'file',
+      target: filePath,
+    }
+  }
+  if (/(grep|glob|search)/i.test(lowerToolName)) {
+    return {
+      label: pattern ? `Searched ${pattern}` : 'Searched codebase',
+      category: 'search',
+      target: pattern,
+    }
+  }
+  if (/(bash|repl|shell)/i.test(lowerToolName) && command) {
+    return buildCommandLabel(command)
+  }
+
+  return null
+}
+
+export function buildLocalToolUseSummary(tools: ToolInfo[]): string | null {
+  const labels = tools
+    .map(deriveToolLabel)
+    .filter((label): label is DerivedLabel => label !== null)
+
+  if (labels.length === 0) {
+    return null
+  }
+
+  if (labels.length === 1) {
+    return labels[0]!.label
+  }
+
+  const uniqueLabels = [...new Set(labels.map(label => label.label))]
+  if (uniqueLabels.length === 1) {
+    return uniqueLabels[0]!
+  }
+
+  const fileTargets = [
+    ...new Set(
+      labels
+        .filter(label => label.category === 'file' && label.target)
+        .map(label => label.target!),
+    ),
+  ]
+  if (fileTargets.length >= 2 && labels.every(label => label.category === 'file')) {
+    return `Updated ${fileTargets.length} files`
+  }
+
+  const priorityOrder: DerivedLabel['category'][] = [
+    'test',
+    'build',
+    'lint',
+    'search',
+    'git',
+    'file',
+    'command',
+  ]
+  for (const category of priorityOrder) {
+    const match = labels.findLast(label => label.category === category)
+    if (match) {
+      return match.label
+    }
+  }
+
+  return labels.at(-1)?.label ?? null
+}
+
+export function buildToolUseSummaryPromptPayload({
+  tools,
+  lastAssistantText,
+}: {
+  tools: ToolInfo[]
+  lastAssistantText?: string
+}): string {
+  const toolSummaries = tools
+    .map(tool => {
+      const inputStr = truncateJson(tool.input, 300)
+      const outputStr = truncateJson(tool.output, 300)
+      return `Tool: ${tool.name}\nInput: ${inputStr}\nOutput: ${outputStr}`
+    })
+    .join('\n\n')
+
+  const contextPrefix = lastAssistantText
+    ? `User's intent (from assistant's last message): ${lastAssistantText.slice(0, 200)}\n\n`
+    : ''
+
+  return `${contextPrefix}Tools completed:\n\n${toolSummaries}\n\nLabel:`
+}
+
 /**
  * Generates a human-readable summary of completed tools.
  *
@@ -53,22 +248,17 @@ export async function generateToolUseSummary({
   }
 
   try {
-    // Build a concise representation of what tools did
-    const toolSummaries = tools
-      .map(tool => {
-        const inputStr = truncateJson(tool.input, 300)
-        const outputStr = truncateJson(tool.output, 300)
-        return `Tool: ${tool.name}\nInput: ${inputStr}\nOutput: ${outputStr}`
-      })
-      .join('\n\n')
-
-    const contextPrefix = lastAssistantText
-      ? `User's intent (from assistant's last message): ${lastAssistantText.slice(0, 200)}\n\n`
-      : ''
+    const localSummary = buildLocalToolUseSummary(tools)
+    if (localSummary) {
+      return localSummary
+    }
 
     const response = await queryHaiku({
       systemPrompt: asSystemPrompt([TOOL_USE_SUMMARY_SYSTEM_PROMPT]),
-      userPrompt: `${contextPrefix}Tools completed:\n\n${toolSummaries}\n\nLabel:`,
+      userPrompt: buildToolUseSummaryPromptPayload({
+        tools,
+        lastAssistantText,
+      }),
       signal,
       options: {
         querySource: 'tool_use_summary_generation',

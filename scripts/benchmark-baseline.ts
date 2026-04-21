@@ -25,6 +25,10 @@ import {
   buildLocalAgentSummary,
 } from '../src/services/AgentSummary/agentSummary.js'
 import { buildExtractMemoriesContextMessages } from '../src/services/extractMemories/extractMemories.js'
+import {
+  buildLocalToolUseSummary,
+  buildToolUseSummaryPromptPayload,
+} from '../src/services/toolUseSummary/toolUseSummaryGenerator.js'
 import { summarizeClaudeMdForAuxiliaryTask } from '../src/utils/claudeMdSummary.js'
 import { summarizeGitStatusForAuxiliaryTask } from '../src/utils/gitStatusSummary.js'
 import {
@@ -302,6 +306,9 @@ function buildSummary(report: {
   const extractMemoriesContextWindow = microMap.get(
     'extract_memories_context_window',
   )
+  const toolUseSummaryLocalDerivation = microMap.get(
+    'tool_use_summary_local_derivation',
+  )
   const sizeLines = report.sizeBenchmarks.map(benchmark => {
     const reduction =
       benchmark.beforeChars === 0
@@ -373,6 +380,11 @@ function buildSummary(report: {
   if (extractMemoriesContextWindow) {
     speedups.push(
       `- extract-memories context slicing: ${extractMemoriesContextWindow.ms}ms for ${extractMemoriesContextWindow.iterations} iterations`,
+    )
+  }
+  if (toolUseSummaryLocalDerivation) {
+    speedups.push(
+      `- tool-use summary local derivation: ${toolUseSummaryLocalDerivation.ms}ms for ${toolUseSummaryLocalDerivation.iterations} iterations`,
     )
   }
 
@@ -624,6 +636,39 @@ const benchmarkExtractMemoriesFullChars = JSON.stringify(
 const benchmarkExtractMemoriesReducedChars = JSON.stringify(
   benchmarkExtractMemoriesContext,
 ).length
+const syntheticToolUseBatch = [
+  {
+    name: 'Read',
+    input: {
+      file_path: 'src/services/api/openaiCompat.ts',
+    },
+    output: 'loaded',
+  },
+  {
+    name: 'Edit',
+    input: {
+      file_path: 'src/services/toolUseSummary/toolUseSummaryGenerator.ts',
+    },
+    output: 'patched',
+  },
+  {
+    name: 'Bash',
+    input: {
+      command: 'bun test ./src/services/toolUseSummary/toolUseSummaryGenerator.test.ts',
+    },
+    output: 'pass',
+  },
+] as const
+const benchmarkToolUseSummaryLocal = buildLocalToolUseSummary(
+  syntheticToolUseBatch as unknown as Parameters<typeof buildLocalToolUseSummary>[0],
+)
+const benchmarkToolUseSummaryPromptPayload = buildToolUseSummaryPromptPayload({
+  tools: syntheticToolUseBatch as unknown as Parameters<
+    typeof buildToolUseSummaryPromptPayload
+  >[0]['tools'],
+  lastAssistantText:
+    'Inspect the tool-use summary path and verify the optimized fallback with tests.',
+})
 const benchmarkManualSessionMemoryPrompt = buildSessionMemorySystemPrompt()
 const benchmarkLegacySessionMemoryPrompt = (
   await getSystemPrompt([], 'deepseek-chat')
@@ -820,6 +865,13 @@ const report = {
         'memory-assistant-6',
       )
     }),
+    runMicroBenchmark('tool_use_summary_local_derivation', 5_000, () => {
+      buildLocalToolUseSummary(
+        syntheticToolUseBatch as unknown as Parameters<
+          typeof buildLocalToolUseSummary
+        >[0],
+      )
+    }),
   ],
   sizeBenchmarks: [
     {
@@ -863,6 +915,11 @@ const report = {
       label: 'extract memories context window (synthetic transcript)',
       beforeChars: benchmarkExtractMemoriesFullChars,
       afterChars: benchmarkExtractMemoriesReducedChars,
+    },
+    {
+      label: 'tool use summary prompt payload (synthetic batch)',
+      beforeChars: benchmarkToolUseSummaryPromptPayload.length,
+      afterChars: benchmarkToolUseSummaryLocal?.length ?? 0,
     },
   ],
   fileStats: [
