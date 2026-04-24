@@ -12,22 +12,22 @@ const baseStorage: CustomApiStorageData = {
   provider: 'openai',
   baseURL: 'https://api.deepseek.com',
   apiKey: 'sk-deepseek',
-  model: 'deepseek-chat',
-  savedModels: ['deepseek-chat', 'deepseek-reasoner', 'kimi-k2.5'],
+  model: 'deepseek-v4-flash',
+  savedModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k2.5'],
   savedProfiles: [
     {
-      id: 'deepseek-chat',
+      id: 'deepseek-v4-flash',
       provider: 'openai',
       baseURL: 'https://api.deepseek.com',
       apiKey: 'sk-deepseek',
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
     },
     {
-      id: 'deepseek-reasoner',
+      id: 'deepseek-v4-pro',
       provider: 'openai',
       baseURL: 'https://api.deepseek.com',
       apiKey: 'sk-deepseek',
-      model: 'deepseek-reasoner',
+      model: 'deepseek-v4-pro',
     },
     {
       id: 'moonshot-kimi-k2.5',
@@ -46,7 +46,7 @@ describe('compatibleApiConfig', () => {
       apiKey: 'sk-deepseek',
       provider: 'openai',
       baseURL: 'https://api.deepseek.com',
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
       savedProfiles: [baseStorage.savedProfiles![0]!, baseStorage.savedProfiles![1]!],
     }
 
@@ -66,15 +66,15 @@ describe('compatibleApiConfig', () => {
   })
 
   test('remove active profile switches the whole endpoint context', () => {
-    const next = buildStorageAfterProfileRemoval(baseStorage, 'deepseek-chat')
+    const next = buildStorageAfterProfileRemoval(baseStorage, 'deepseek-v4-flash')
 
-    expect(next.model).toBe('deepseek-reasoner')
+    expect(next.model).toBe('deepseek-v4-pro')
     expect(next.baseURL).toBe('https://api.deepseek.com')
     expect(next.apiKey).toBe('sk-deepseek')
 
     const afterSecondRemoval = buildStorageAfterProfileRemoval(
       next,
-      'deepseek-reasoner',
+      'deepseek-v4-pro',
     )
 
     expect(afterSecondRemoval.model).toBe('kimi-k2.5')
@@ -90,7 +90,7 @@ describe('compatibleApiConfig', () => {
       'moonshot-kimi-k2.5',
     )
 
-    expect(next.model).toBe('deepseek-chat')
+    expect(next.model).toBe('deepseek-v4-flash')
     expect(next.baseURL).toBe('https://api.deepseek.com')
     expect(next.apiKey).toBe('sk-deepseek')
     expect(
@@ -100,7 +100,7 @@ describe('compatibleApiConfig', () => {
   })
 
   test('active target detection supports ids and model names', () => {
-    expect(isActiveCompatibleTarget(baseStorage, 'deepseek-chat')).toBe(true)
+    expect(isActiveCompatibleTarget(baseStorage, 'deepseek-v4-flash')).toBe(true)
     expect(isActiveCompatibleTarget(baseStorage, 'moonshot-kimi-k2.5')).toBe(
       false,
     )
@@ -111,7 +111,7 @@ describe('compatibleApiConfig', () => {
       {
         provider: 'openai',
         baseURL: 'https://api.deepseek.com',
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         savedProfiles: baseStorage.savedProfiles,
       },
       {},

@@ -334,7 +334,7 @@ export function Config({
   const shouldShowExternalIncludesToggle = hasExternalClaudeMdIncludes(memoryFiles);
   const autoUpdaterDisabledReason = getAutoUpdaterDisabledReason();
   const compatiblePresets = getCustomModelPresets();
-  const compatiblePresetDisplayOrder = ['deepseek-chat', 'deepseek-reasoner', 'bailian-qwen3-coder-next', 'bailian-qwen3-coder-plus', 'bailian-qwen3.5-plus', 'bailian-glm-4.7', 'bailian-kimi-k2.5', 'moonshot-kimi-k2.5', 'moonshot-kimi-k2-thinking', 'zhipu-glm-4.7'];
+  const compatiblePresetDisplayOrder = ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner', 'bailian-qwen3-coder-next', 'bailian-qwen3-coder-plus', 'bailian-qwen3.5-plus', 'bailian-glm-4.7', 'bailian-kimi-k2.5', 'moonshot-kimi-k2.5', 'moonshot-kimi-k2-thinking', 'zhipu-glm-4.7'];
   const compatiblePresetOptions = [...compatiblePresets].sort((left, right) => {
     const leftIndex = compatiblePresetDisplayOrder.indexOf(left.id);
     const rightIndex = compatiblePresetDisplayOrder.indexOf(right.id);

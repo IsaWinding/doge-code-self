@@ -468,8 +468,8 @@ async function main(): Promise<void> {
   const presetQueries = [
     ...getCustomModelPresets().map(preset => preset.id),
     ...getCustomModelPresets().map(preset => preset.model),
-    'deepseek-chat',
-    'deepseek-reasoner',
+    'deepseek-v4-flash',
+    'deepseek-v4-pro',
     'non-existent-model',
   ]
 
@@ -484,22 +484,22 @@ async function main(): Promise<void> {
     provider: 'openai',
     baseURL: 'https://api.deepseek.com',
     apiKey: 'sk-current',
-    model: 'deepseek-chat',
-    savedModels: ['deepseek-chat', 'deepseek-reasoner', 'kimi-k2.5'],
+    model: 'deepseek-v4-flash',
+    savedModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k2.5'],
     savedProfiles: [
       {
-        id: 'deepseek-chat',
+        id: 'deepseek-v4-flash',
         provider: 'openai',
         baseURL: 'https://api.deepseek.com',
         apiKey: 'sk-deepseek',
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
       },
       {
-        id: 'deepseek-reasoner',
+        id: 'deepseek-v4-pro',
         provider: 'openai',
         baseURL: 'https://api.deepseek.com',
         apiKey: 'sk-deepseek',
-        model: 'deepseek-reasoner',
+        model: 'deepseek-v4-pro',
       },
       {
         id: 'moonshot-kimi-k2.5',
@@ -514,7 +514,7 @@ async function main(): Promise<void> {
   const generatedAt = new Date().toISOString().replace(/[:.]/g, '-')
 
   clearSystemPromptSections()
-  await getSystemPrompt([], 'deepseek-chat')
+  await getSystemPrompt([], 'deepseek-v4-flash')
   const benchmarkCwd = process.cwd()
   const benchmarkCustomAgent = {
     agentType: 'benchmark-agent',
@@ -778,7 +778,7 @@ async function main(): Promise<void> {
     })
   const benchmarkManualSessionMemoryPrompt = buildSessionMemorySystemPrompt()
   const benchmarkLegacySessionMemoryPrompt = (
-    await getSystemPrompt([], 'deepseek-chat')
+    await getSystemPrompt([], 'deepseek-v4-flash')
   ).join('\n\n')
 
   const report = {
@@ -807,7 +807,7 @@ async function main(): Promise<void> {
       resolveCompatibleStorage(sampleStorage, sampleStorage)
     }),
     await runAsyncMicroBenchmark('system_prompt_warm_current', 50, async () => {
-      await getSystemPrompt([], 'deepseek-chat')
+      await getSystemPrompt([], 'deepseek-v4-flash')
     }),
     await runAsyncMicroBenchmark(
       'system_prompt_warm_forced_prefetch',
@@ -816,9 +816,9 @@ async function main(): Promise<void> {
         await Promise.all([
           getSkillToolCommands(benchmarkCwd),
           getOutputStyleConfig(),
-          computeSimpleEnvInfo('deepseek-chat'),
+          computeSimpleEnvInfo('deepseek-v4-flash'),
         ])
-        await getSystemPrompt([], 'deepseek-chat')
+        await getSystemPrompt([], 'deepseek-v4-flash')
       },
     ),
     await runAsyncMicroBenchmark('custom_agent_context_current', 100, async () => {
@@ -827,7 +827,7 @@ async function main(): Promise<void> {
       getSystemContext.cache.clear?.()
       await fetchSystemPromptParts({
         tools: [],
-        mainLoopModel: 'deepseek-chat',
+        mainLoopModel: 'deepseek-v4-flash',
         additionalWorkingDirectories: [],
         mcpClients: [],
         customSystemPrompt: undefined,
@@ -840,7 +840,7 @@ async function main(): Promise<void> {
       getUserContext.cache.clear?.()
       getSystemContext.cache.clear?.()
       await Promise.all([
-        getSystemPrompt([], 'deepseek-chat'),
+        getSystemPrompt([], 'deepseek-v4-flash'),
         getUserContext(),
         getSystemContext(),
       ])
@@ -851,7 +851,7 @@ async function main(): Promise<void> {
       getSystemContext.cache.clear?.()
       await fetchEffectiveSystemPromptContext({
         tools: [],
-        mainLoopModel: 'deepseek-chat',
+        mainLoopModel: 'deepseek-v4-flash',
         additionalWorkingDirectories: [],
         mcpClients: [],
         customSystemPrompt: 'Custom compact prompt',
@@ -864,7 +864,7 @@ async function main(): Promise<void> {
       getUserContext.cache.clear?.()
       getSystemContext.cache.clear?.()
       const [defaultSystemPrompt, userContext, systemContext] = await Promise.all([
-        getSystemPrompt([], 'deepseek-chat'),
+        getSystemPrompt([], 'deepseek-v4-flash'),
         getUserContext(),
         getSystemContext(),
       ])
@@ -913,7 +913,7 @@ async function main(): Promise<void> {
       getUserContext.cache.clear?.()
       getSystemContext.cache.clear?.()
       const [rawSystemPrompt, userContext, systemContext] = await Promise.all([
-        getSystemPrompt([], 'deepseek-chat'),
+        getSystemPrompt([], 'deepseek-v4-flash'),
         getUserContext(),
         getSystemContext(),
       ])
@@ -949,10 +949,10 @@ async function main(): Promise<void> {
         getUserContext.cache.clear?.()
         getSystemContext.cache.clear?.()
         const [rawSystemPrompt, userContext, systemContext] = await Promise.all([
-          getSystemPrompt([], 'deepseek-chat'),
-          getUserContext(),
-          getSystemContext(),
-        ])
+        getSystemPrompt([], 'deepseek-v4-flash'),
+        getUserContext(),
+        getSystemContext(),
+      ])
         void {
           systemPrompt: rawSystemPrompt,
           userContext,
