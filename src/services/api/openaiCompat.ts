@@ -29,6 +29,7 @@ type OpenAIToolCall = {
 type OpenAIChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content?: string | null
+  reasoning_content?: string | null
   tool_call_id?: string
   tool_calls?: OpenAIToolCall[]
 }
@@ -58,6 +59,7 @@ type OpenAIStreamChunk = {
     delta?: {
       role?: 'assistant'
       content?: string | null
+      reasoning_content?: string | null
       tool_calls?: Array<{
         index?: number
         id?: string
@@ -119,6 +121,19 @@ function contentToText(content: BetaMessageParam['content']): string {
     })
     .filter(Boolean)
     .join('\n')
+}
+
+function contentToReasoning(content: BetaMessageParam['content']): string {
+  if (typeof content === 'string') return ''
+  return content
+    .map(block => {
+      if (block.type === 'thinking') {
+        return typeof block.thinking === 'string' ? block.thinking : ''
+      }
+      return ''
+    })
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 function toBlocks(content: BetaMessageParam['content']): AnyBlock[] {
@@ -193,6 +208,9 @@ export function convertAnthropicRequestToOpenAI(input: {
       const blocks = Array.isArray(message.content)
         ? (message.content as unknown as AnyBlock[])
         : []
+      const reasoningContent = contentToReasoning(
+        message.content as BetaMessageParam['content'],
+      )
       const text = blocks
         .filter(block => block.type === 'text')
         .map(block => (typeof block.text === 'string' ? block.text : ''))
@@ -215,6 +233,7 @@ export function convertAnthropicRequestToOpenAI(input: {
       messages.push({
         role: 'assistant',
         content: text || null,
+        ...(reasoningContent ? { reasoning_content: reasoningContent } : {}),
         ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
       })
     }
@@ -296,6 +315,8 @@ export async function* createAnthropicStreamFromOpenAI(input: {
   const decoder = new TextDecoder()
   let buffer = ''
   let started = false
+  let reasoningStarted = false
+  let reasoningContentIndex: number | null = null
   let textStarted = false
   let textContentIndex: number | null = null
   let toolIndexByOpenAIIndex = new Map<number, number>()
@@ -356,10 +377,38 @@ export async function* createAnthropicStreamFromOpenAI(input: {
           } as BetaRawMessageStreamEvent
         }
 
+        if (delta?.reasoning_content) {
+          if (!reasoningStarted) {
+            reasoningStarted = true
+            reasoningContentIndex = nextContentIndex
+            nextContentIndex += 1
+            yield {
+              type: 'content_block_start',
+              index: reasoningContentIndex,
+              content_block: {
+                type: 'thinking',
+                thinking: '',
+                signature: '',
+              },
+            } as BetaRawMessageStreamEvent
+          }
+
+          yield {
+            type: 'content_block_delta',
+            index: reasoningContentIndex ?? 0,
+            delta: {
+              type: 'thinking_delta',
+              thinking: delta.reasoning_content,
+            },
+          } as BetaRawMessageStreamEvent
+          emittedAnyContent = true
+        }
+
         if (delta?.content) {
           if (!textStarted) {
             textStarted = true
             textContentIndex = nextContentIndex
+            nextContentIndex += 1
             yield {
               type: 'content_block_start',
               index: textContentIndex,
@@ -385,9 +434,9 @@ export async function* createAnthropicStreamFromOpenAI(input: {
           const openAIIndex = toolCall.index ?? 0
           let anthropicIndex = toolIndexByOpenAIIndex.get(openAIIndex)
           if (anthropicIndex === undefined) {
-            anthropicIndex = textStarted ? nextContentIndex + 1 : nextContentIndex
+            anthropicIndex = nextContentIndex
             toolIndexByOpenAIIndex.set(openAIIndex, anthropicIndex)
-            nextContentIndex = Math.max(nextContentIndex, anthropicIndex)
+            nextContentIndex += 1
             const state = {
               id: toolCall.id ?? `toolu_${openAIIndex}`,
               name: toolCall.function?.name ?? '',
@@ -440,6 +489,12 @@ export async function* createAnthropicStreamFromOpenAI(input: {
             } as BetaRawMessageStreamEvent
           }
           completionTokens = chunk.usage?.completion_tokens ?? completionTokens
+          if (reasoningStarted && reasoningContentIndex !== null) {
+            yield {
+              type: 'content_block_stop',
+              index: reasoningContentIndex,
+            } as BetaRawMessageStreamEvent
+          }
           if (textStarted && textContentIndex !== null) {
             yield {
               type: 'content_block_stop',
