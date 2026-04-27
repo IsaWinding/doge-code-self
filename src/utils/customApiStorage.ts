@@ -113,27 +113,71 @@ export function findCustomApiProfile(
   idOrModel: string,
   data: CustomApiStorageData = readCustomApiStorage(),
 ): CustomApiProfile | undefined {
-  const normalized = idOrModel.trim().toLowerCase()
-  if (!normalized) return undefined
+  const matches = findCustomApiProfileMatches(idOrModel, data)
+  return matches.length === 1 ? matches[0] : undefined
+}
 
-  return (data.savedProfiles ?? []).find(
-    item =>
-      item.id.toLowerCase() === normalized ||
-      item.model.toLowerCase() === normalized,
+export function findCustomApiProfileMatches(
+  idOrModel: string,
+  data: CustomApiStorageData = readCustomApiStorage(),
+): readonly CustomApiProfile[] {
+  const normalized = idOrModel.trim().toLowerCase()
+  if (!normalized) return []
+
+  const idMatch = (data.savedProfiles ?? []).find(
+    item => item.id.toLowerCase() === normalized,
   )
+  if (idMatch) return [idMatch]
+
+  return (data.savedProfiles ?? []).filter(
+    item => item.model.toLowerCase() === normalized,
+  )
+}
+
+export function resolveCustomApiProfileTargets(
+  idOrModel: string,
+  data: CustomApiStorageData,
+): readonly CustomApiProfile[] {
+  const normalized = idOrModel.trim().toLowerCase()
+  if (!normalized) return []
+
+  const profiles = data.savedProfiles ?? []
+  const idMatches = profiles.filter(
+    item => item.id.toLowerCase() === normalized,
+  )
+  if (idMatches.length > 0) return idMatches
+
+  const activeProfile = profiles.find(
+    item =>
+      item.provider === data.provider &&
+      item.baseURL === data.baseURL &&
+      item.model === data.model,
+  )
+  if (activeProfile?.model.toLowerCase() === normalized) {
+    return [activeProfile]
+  }
+
+  const modelMatches = profiles.filter(
+    item => item.model.toLowerCase() === normalized,
+  )
+  return modelMatches.length === 1 ? modelMatches : []
 }
 
 export function removeCustomApiProfile(
   idOrModel: string,
   data: CustomApiStorageData,
 ): CustomApiStorageData {
-  const normalized = idOrModel.trim().toLowerCase()
+  const profiles = data.savedProfiles ?? []
+  const targetIds = new Set(
+    resolveCustomApiProfileTargets(idOrModel, data).map(item =>
+      item.id.toLowerCase(),
+    ),
+  )
+
   return {
     ...data,
-    savedProfiles: (data.savedProfiles ?? []).filter(
-      item =>
-        item.id.toLowerCase() !== normalized &&
-        item.model.toLowerCase() !== normalized,
+    savedProfiles: profiles.filter(
+      item => !targetIds.has(item.id.toLowerCase()),
     ),
   }
 }

@@ -8,6 +8,7 @@ import {
 } from '../utils/compatibleApiConfig.js'
 import {
   findCustomApiProfile,
+  findCustomApiProfileMatches,
   readCustomApiStorage,
   writeCustomApiStorage,
 } from '../utils/customApiStorage.js'
@@ -59,13 +60,50 @@ export const call: LocalCommandCall = async (args, context) => {
 
   const nextApiKey = parsed.apiKey.trim()
   const profile = findCustomApiProfile(targetId, secureStored)
+  const profileMatches = findCustomApiProfileMatches(targetId, secureStored)
+  const explicitTarget = Boolean(parsed.targetId?.trim())
+  const updatesActiveTarget = isActiveCompatibleTarget(secureStored, targetId)
+
+  if (
+    explicitTarget &&
+    !profile &&
+    profileMatches.length > 1 &&
+    !updatesActiveTarget
+  ) {
+    return {
+      type: 'text',
+      value:
+        `Ambiguous model profile: ${targetId}\n` +
+        'Use one of these profile ids:\n' +
+        profileMatches
+          .map(
+            match =>
+              `- ${match.id}: provider=${match.provider}, baseURL=${match.baseURL}, model=${match.model}`,
+          )
+          .join('\n'),
+    }
+  }
+
+  if (
+    explicitTarget &&
+    !profile &&
+    profileMatches.length === 0 &&
+    !updatesActiveTarget
+  ) {
+    return {
+      type: 'text',
+      value:
+        `Unknown model or profile: ${targetId}\n` +
+        'Run /list-models to see saved profiles or /add-model --preset to add one.',
+    }
+  }
+
   const nextStorage = buildStorageForApiKeyUpdate(
     secureStored,
     targetId,
     nextApiKey,
     profile?.id,
   )
-  const updatesActiveTarget = isActiveCompatibleTarget(secureStored, targetId)
 
   writeCustomApiStorage(nextStorage)
   if (updatesActiveTarget) {

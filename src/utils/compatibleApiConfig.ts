@@ -1,6 +1,7 @@
 import type { GlobalConfig } from './config.js'
 import {
   removeCustomApiProfile,
+  resolveCustomApiProfileTargets,
   upsertCustomApiProfile,
   type CustomApiProfile,
   type CustomApiStorageData,
@@ -63,12 +64,14 @@ export function getActiveCompatiblePreset(
   data: Pick<CustomApiStorageData, 'provider' | 'baseURL' | 'model'>,
 ): CustomModelPreset | undefined {
   if (!data.provider || !data.baseURL || !data.model) return undefined
-  return findCustomModelPreset(data.model) ?? getCustomModelPresets().find(
+  const exactPreset = getCustomModelPresets().find(
     preset =>
       preset.provider === data.provider &&
       preset.baseURL === data.baseURL &&
       preset.model === data.model,
   )
+
+  return exactPreset ?? findCustomModelPreset(data.model)
 }
 
 export function getCompatibleApiKeyForTarget(
@@ -319,9 +322,13 @@ export function buildStorageForApiKeyUpdate(
   apiKey: string | undefined,
   fallbackProfileId?: string,
 ): CustomApiStorageData {
-  const normalizedTarget = targetIdOrModel.trim().toLowerCase()
   const trimmedApiKey = apiKey?.trim() ? apiKey.trim() : undefined
   const activeProfile = getActiveCompatibleProfile(current)
+  const targetProfileIds = new Set(
+    resolveCustomApiProfileTargets(targetIdOrModel, current).map(profile =>
+      profile.id.toLowerCase(),
+    ),
+  )
 
   const nextStorageBase: CustomApiStorageData = {
     ...current,
@@ -329,8 +336,7 @@ export function buildStorageForApiKeyUpdate(
       ? trimmedApiKey
       : current.apiKey,
     savedProfiles: (current.savedProfiles ?? []).map(profile =>
-      profile.id.toLowerCase() === normalizedTarget ||
-      profile.model.toLowerCase() === normalizedTarget
+      targetProfileIds.has(profile.id.toLowerCase())
         ? { ...profile, apiKey: trimmedApiKey }
         : profile,
     ),
@@ -341,8 +347,7 @@ export function buildStorageForApiKeyUpdate(
       upsertCustomApiProfile(nextStorageBase, {
         ...activeProfile,
         apiKey:
-          activeProfile.id.toLowerCase() === normalizedTarget ||
-          activeProfile.model.toLowerCase() === normalizedTarget
+          targetProfileIds.has(activeProfile.id.toLowerCase())
             ? trimmedApiKey
             : activeProfile.apiKey,
       }),
@@ -378,6 +383,11 @@ export function buildStorageAfterProfileRemoval(
   const next = removeCustomApiProfile(targetIdOrModel, current)
   const activeProfile = getActiveCompatibleProfile(next)
   const savedModels = getCompatibleSavedModels(next)
+  const fallbackAfterRemoval = {
+    ...current,
+    savedModels,
+    savedProfiles: next.savedProfiles,
+  }
 
   if (activeProfile) {
     return resolveCompatibleStorage(
@@ -386,7 +396,7 @@ export function buildStorageAfterProfileRemoval(
         apiKey: activeProfile.apiKey,
         savedModels,
       },
-      current,
+      fallbackAfterRemoval,
     )
   }
 
@@ -413,7 +423,7 @@ export function buildStorageAfterProfileRemoval(
       model: fallbackProfile.model,
       savedModels,
     },
-    current,
+    fallbackAfterRemoval,
   )
 }
 

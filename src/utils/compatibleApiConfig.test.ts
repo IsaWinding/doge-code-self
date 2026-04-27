@@ -3,10 +3,15 @@ import {
   buildStorageAfterProfileRemoval,
   buildStorageForApiKeyUpdate,
   buildStorageForPresetSelection,
+  getActiveCompatiblePreset,
   isActiveCompatibleTarget,
   resolveCompatibleStorage,
 } from './compatibleApiConfig.js'
-import type { CustomApiStorageData } from './customApiStorage.js'
+import {
+  findCustomApiProfile,
+  findCustomApiProfileMatches,
+  type CustomApiStorageData,
+} from './customApiStorage.js'
 
 const baseStorage: CustomApiStorageData = {
   provider: 'openai',
@@ -82,6 +87,37 @@ describe('compatibleApiConfig', () => {
     expect(afterSecondRemoval.apiKey).toBe('sk-moonshot')
   })
 
+  test('model-name removal only removes the active profile when aliases collide', () => {
+    const storage: CustomApiStorageData = {
+      ...baseStorage,
+      provider: 'openai',
+      baseURL: 'https://api.moonshot.cn',
+      apiKey: 'sk-moonshot',
+      model: 'kimi-k2.5',
+      savedProfiles: [
+        ...baseStorage.savedProfiles!,
+        {
+          id: 'bailian-kimi-k2.5',
+          provider: 'anthropic',
+          baseURL: 'https://dashscope.aliyuncs.com/apps/anthropic',
+          apiKey: 'sk-bailian',
+          model: 'kimi-k2.5',
+        },
+      ],
+    }
+
+    const next = buildStorageAfterProfileRemoval(storage, 'kimi-k2.5')
+
+    expect(
+      next.savedProfiles?.some(profile => profile.id === 'moonshot-kimi-k2.5'),
+    ).toBe(false)
+    expect(
+      next.savedProfiles?.some(profile => profile.id === 'bailian-kimi-k2.5'),
+    ).toBe(true)
+    expect(next.baseURL).toBe('https://api.deepseek.com')
+    expect(next.model).toBe('deepseek-v4-flash')
+  })
+
   test('updating an inactive profile key does not retarget the active session', () => {
     const next = buildStorageForApiKeyUpdate(
       baseStorage,
@@ -97,6 +133,68 @@ describe('compatibleApiConfig', () => {
       next.savedProfiles?.find(profile => profile.id === 'moonshot-kimi-k2.5')
         ?.apiKey,
     ).toBe('sk-new-moonshot')
+  })
+
+  test('profile lookup avoids ambiguous model aliases', () => {
+    const storage: CustomApiStorageData = {
+      ...baseStorage,
+      savedProfiles: [
+        ...baseStorage.savedProfiles!,
+        {
+          id: 'bailian-kimi-k2.5',
+          provider: 'anthropic',
+          baseURL: 'https://dashscope.aliyuncs.com/apps/anthropic',
+          apiKey: 'sk-bailian',
+          model: 'kimi-k2.5',
+        },
+      ],
+    }
+
+    expect(findCustomApiProfile('kimi-k2.5', storage)).toBeUndefined()
+    expect(
+      findCustomApiProfileMatches('kimi-k2.5', storage).map(
+        profile => profile.id,
+      ),
+    ).toEqual(['moonshot-kimi-k2.5', 'bailian-kimi-k2.5'])
+    expect(findCustomApiProfile('moonshot-kimi-k2.5', storage)?.baseURL).toBe(
+      'https://api.moonshot.cn',
+    )
+  })
+
+  test('model-name api key updates only the active profile when aliases collide', () => {
+    const storage: CustomApiStorageData = {
+      ...baseStorage,
+      provider: 'openai',
+      baseURL: 'https://api.moonshot.cn',
+      apiKey: 'sk-moonshot',
+      model: 'kimi-k2.5',
+      savedProfiles: [
+        ...baseStorage.savedProfiles!,
+        {
+          id: 'bailian-kimi-k2.5',
+          provider: 'anthropic',
+          baseURL: 'https://dashscope.aliyuncs.com/apps/anthropic',
+          apiKey: 'sk-bailian',
+          model: 'kimi-k2.5',
+        },
+      ],
+    }
+
+    const next = buildStorageForApiKeyUpdate(
+      storage,
+      'kimi-k2.5',
+      'sk-new-active-kimi',
+    )
+
+    expect(next.apiKey).toBe('sk-new-active-kimi')
+    expect(
+      next.savedProfiles?.find(profile => profile.id === 'moonshot-kimi-k2.5')
+        ?.apiKey,
+    ).toBe('sk-new-active-kimi')
+    expect(
+      next.savedProfiles?.find(profile => profile.id === 'bailian-kimi-k2.5')
+        ?.apiKey,
+    ).toBe('sk-bailian')
   })
 
   test('active target detection supports ids and model names', () => {
@@ -118,5 +216,23 @@ describe('compatibleApiConfig', () => {
     )
 
     expect(next.apiKey).toBe('sk-deepseek')
+  })
+
+  test('active preset resolution prefers exact endpoint over duplicate model lookup', () => {
+    expect(
+      getActiveCompatiblePreset({
+        provider: 'anthropic',
+        baseURL: 'https://dashscope.aliyuncs.com/apps/anthropic',
+        model: 'kimi-k2.5',
+      })?.id,
+    ).toBe('bailian-kimi-k2.5')
+
+    expect(
+      getActiveCompatiblePreset({
+        provider: 'openai',
+        baseURL: 'https://api.moonshot.cn',
+        model: 'kimi-k2.5',
+      })?.id,
+    ).toBe('moonshot-kimi-k2.5')
   })
 })

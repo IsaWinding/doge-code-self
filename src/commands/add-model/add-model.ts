@@ -13,6 +13,7 @@ import {
 } from '../../utils/customApiStorage.js'
 import {
   findCustomModelPreset,
+  findCustomModelPresetMatches,
   renderCustomModelPresetList,
 } from '../../utils/customModelPresets.js'
 
@@ -43,6 +44,22 @@ export const call: LocalCommandCall = async (args, _context) => {
     const presetId = presetMatch[1]?.trim() ?? ''
     const preset = findCustomModelPreset(presetId)
     if (!preset) {
+      const presetMatches = findCustomModelPresetMatches(presetId)
+      if (presetMatches.length > 1) {
+        return {
+          type: 'text',
+          value:
+            `Ambiguous preset: ${presetId}\n` +
+            'Use one of these preset ids:\n' +
+            presetMatches
+              .map(
+                match =>
+                  `- ${match.id}: provider=${match.provider}, baseURL=${match.baseURL}, model=${match.model}`,
+              )
+              .join('\n'),
+        }
+      }
+
       return {
         type: 'text',
         value:

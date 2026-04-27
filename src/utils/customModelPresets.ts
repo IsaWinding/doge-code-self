@@ -124,11 +124,19 @@ const CUSTOM_MODEL_PRESETS: readonly CustomModelPreset[] = [
   },
 ] as const
 
-const PRESET_LOOKUP = (() => {
+const PRESET_ID_LOOKUP = (() => {
   const lookup = new Map<string, CustomModelPreset>()
   for (const preset of CUSTOM_MODEL_PRESETS) {
     lookup.set(preset.id.toLowerCase(), preset)
-    lookup.set(preset.model.toLowerCase(), preset)
+  }
+  return lookup
+})()
+
+const PRESETS_BY_MODEL = (() => {
+  const lookup = new Map<string, CustomModelPreset[]>()
+  for (const preset of CUSTOM_MODEL_PRESETS) {
+    const key = preset.model.toLowerCase()
+    lookup.set(key, [...(lookup.get(key) ?? []), preset])
   }
   return lookup
 })()
@@ -142,10 +150,23 @@ export function getCustomModelPresets(): readonly CustomModelPreset[] {
   return CUSTOM_MODEL_PRESETS
 }
 
+export function findCustomModelPresetMatches(
+  id: string,
+): readonly CustomModelPreset[] {
+  const normalized = id.trim().toLowerCase()
+  if (!normalized) return []
+
+  const exactIdMatch = PRESET_ID_LOOKUP.get(normalized)
+  if (exactIdMatch) return [exactIdMatch]
+
+  return PRESETS_BY_MODEL.get(normalized) ?? []
+}
+
 export function findCustomModelPreset(
   id: string,
 ): CustomModelPreset | undefined {
-  return PRESET_LOOKUP.get(id.trim().toLowerCase())
+  const modelMatches = findCustomModelPresetMatches(id)
+  return modelMatches.length === 1 ? modelMatches[0] : undefined
 }
 
 export function renderCustomModelPresetList(): string {

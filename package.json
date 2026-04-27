@@ -21,7 +21,7 @@
     "dev:restore-check": "bun run ./src/dev-entry.ts",
     "benchmark:baseline": "bun run ./scripts/benchmark-baseline.ts",
     "benchmark:compare": "bun run ./scripts/benchmark-compare.ts",
-    "test:compatible-api": "bun test ./src/utils/compatibleApiConfig.test.ts"
+    "test:compatible-api": "bun test ./src/utils/compatibleApiConfig.test.ts ./src/utils/customModelPresets.test.ts"
   },
   "bin": {
     "doge": "./src/bootstrap-entry.ts"

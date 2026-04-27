@@ -11,7 +11,10 @@ import {
   readCustomApiStorage,
   writeCustomApiStorage,
 } from '../utils/customApiStorage.js'
-import { findCustomModelPreset } from '../utils/customModelPresets.js'
+import {
+  findCustomModelPreset,
+  findCustomModelPresetMatches,
+} from '../utils/customModelPresets.js'
 
 export const call: LocalCommandCall = async (args, _context) => {
   const target = args.trim()
@@ -56,6 +59,22 @@ export const call: LocalCommandCall = async (args, _context) => {
 
   const preset = findCustomModelPreset(target)
   if (!preset) {
+    const presetMatches = findCustomModelPresetMatches(target)
+    if (presetMatches.length > 1) {
+      return {
+        type: 'text',
+        value:
+          `Ambiguous model preset: ${target}\n` +
+          'Use one of these preset ids:\n' +
+          presetMatches
+            .map(
+              match =>
+                `- ${match.id}: provider=${match.provider}, baseURL=${match.baseURL}, model=${match.model}`,
+            )
+            .join('\n'),
+      }
+    }
+
     return {
       type: 'text',
       value:
